@@ -20,7 +20,7 @@ show_header() {
     echo -e "${C_CYAN}| '__/ _ \/ __/ _ \| '_ \| '_ \ / _ \/ __| __|${C_RESET}"
     echo -e "${C_CYAN}| | |  __/ (_| (_) | | | | | | |  __/ (__| |_${C_RESET}"
     echo -e "${C_CYAN}|_|  \___|\___\___/|_| |_|_| |_|\___|\___|\__|${C_RESET}"
-    echo "              Made for Multi-Account v4.1 (Live UI & 2-Step Launch)"
+    echo "              Made for Multi-Account v4.3"
     echo ""
 }
 
@@ -130,7 +130,7 @@ draw_dashboard() {
 }
 
 # ==========================================
-# เมนู 1: ระบบ Rejoin (Live UI + 2-Step Launch)
+# เมนู 1: ระบบ Rejoin 
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -158,6 +158,8 @@ start_auto_rejoin() {
     colors=()
     infos=()
 
+    tput civis 
+
     while true; do
         for i in "${!pkgs[@]}"; do
             statuses[$i]="รอคิว (Waiting)"
@@ -184,23 +186,27 @@ start_auto_rejoin() {
             colors[$i]="$C_RED"
             infos[$i]="Force Stop"
             draw_dashboard
+            
+            # --- แก้ไขระบบ Kill ให้เคลียร์จอ ---
+            input keyevent 3  # กดปุ่ม Home เพื่อพับหน้าจอลงไปก่อน
+            sleep 1
             am force-stop "${pkgs[$i]}" > /dev/null 2>&1
             sleep 2
+            # --------------------------------
             
-            statuses[$i]="กำลังเปิด (App)"
+            statuses[$i]="เปิดหน้าแรก"
             colors[$i]="$C_GREEN"
-            infos[$i]="เปิดหน้าแรก..."
-            draw_dashboard
-            
-            # 1. ปลุกแอพให้เปิดขึ้นมาก่อน
             monkey -p "${pkgs[$i]}" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
-            sleep 4
+            
+            for (( w=3; w>0; w-- )); do
+                infos[$i]="รอเข้าเกม ${w}s..."
+                draw_dashboard
+                sleep 1
+            done
             
             statuses[$i]="ส่งเข้าแมพ (Map)"
             infos[$i]="Place ID"
             draw_dashboard
-            
-            # 2. ยิงคำสั่งเข้าแมพตามหลัง
             am start -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "${pkgs[$i]}" > /dev/null 2>&1
             
             statuses[$i]="รันปกติ (Running)"
@@ -221,7 +227,14 @@ start_auto_rejoin() {
             sleep 1
         done
     done
+    
+    tput cnorm 
 }
+
+# ==========================================
+# ดักจับ Ctrl+C เพื่อคืนค่า Cursor
+# ==========================================
+trap 'tput cnorm; clear; exit' INT
 
 # ==========================================
 # เมนูหลัก (Main Menu)
@@ -241,7 +254,7 @@ while true; do
         1) start_auto_rejoin ;;
         2) start_auto_setup ;;
         3) setup_webhook ;;
-        0) clear; exit 0 ;;
+        0) clear; tput cnorm; exit 0 ;;
         *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
     esac
 done
