@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# กำหนดค่าสี
+# ==========================================
+# กำหนดค่าสี (ANSI Colors)
+# ==========================================
 C_CYAN='\e[36m'
 C_GREEN='\e[32m'
 C_YELLOW='\e[33m'
@@ -8,7 +10,11 @@ C_RED='\e[31m'
 C_PURPLE='\e[35m'
 C_RESET='\e[0m'
 CONFIG_FILE="roblox_accounts.cfg"
+LUA_FILENAME="status_check.lua"
 
+# ==========================================
+# ฟังก์ชันแสดงส่วนหัว
+# ==========================================
 show_header() {
     clear
     echo -e "${C_CYAN}"
@@ -16,20 +22,99 @@ show_header() {
     echo "| '__/ _ \/ __/ _ \| '_ \| '_ \ / _ \/ __| __|"
     echo "| | |  __/ (_| (_) | | | | | | |  __/ (__| |_"
     echo "|_|  \___|\___\___/|_| |_|_| |_|\___|\___|\__|"
-    echo "              Made for Multi-Account v2.0"
+    echo "              Made for Multi-Account v3.1"
     echo -e "${C_RESET}"
 }
 
 # ==========================================
-# เมนู 2: ระบบตั้งค่าอัตโนมัติ (Auto Setup)
+# เมนู 3: ระบบฝัง Lua Script ไปยังโฟลเดอร์ Autoexec
+# ==========================================
+setup_webhook() {
+    show_header
+    echo -e "${C_CYAN}--- Setup Discord Webhook & Autoexec ---${C_RESET}"
+    read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook: " webhook_url
+    
+    if [ -z "$webhook_url" ]; then
+        echo -e "${C_RED}❌ ข้อผิดพลาด: ไม่ได้ใส่ลิงก์ Webhook!${C_RESET}"
+        sleep 2
+        return
+    fi
+
+    echo -e "${C_YELLOW}🔍 กำลังค้นหาโฟลเดอร์ Autoexec ทั้งหมดในเครื่อง...${C_RESET}"
+    autoexec_folders=$(find /storage/emulated/0 -maxdepth 3 -type d -iname "Autoexec" 2>/dev/null)
+
+    if [ -z "$autoexec_folders" ]; then
+        echo -e "${C_RED}❌ ไม่พบโฟลเดอร์ Autoexec ในเครื่อง${C_RESET}"
+        sleep 3
+        return
+    fi
+
+    echo "$autoexec_folders" | while read -r folder; do
+        lua_path="$folder/$LUA_FILENAME"
+        
+        if [ -f "$lua_path" ]; then
+            rm "$lua_path"
+        fi
+
+        cat <<EOF > "$lua_path"
+repeat wait() until game:IsLoaded()
+
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local GuiService = game:GetService("GuiService")
+local player = Players.LocalPlayer
+local webhookUrl = "$webhook_url"
+
+local playerName = player and player.Name or "กำลังโหลด..."
+local displayName = player and player.DisplayName or "กำลังโหลด..."
+
+local function sendWebhook(title, desc, colorHex)
+    if webhookUrl == "" or not request then return end
+    local data = {
+        ["embeds"] = {{
+            ["title"] = title,
+            ["description"] = desc,
+            ["color"] = colorHex,
+            ["fields"] = {
+                {["name"] = "👤 Username", ["value"] = playerName, ["inline"] = true},
+                {["name"] = "🏷️ Display Name", ["value"] = displayName, ["inline"] = true}
+            },
+            ["footer"] = {["text"] = "Auto Rejoin System"}
+        }}
+    }
+    pcall(function()
+        request({
+            Url = webhookUrl,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(data)
+        })
+    end)
+end
+
+sendWebhook("✅ เข้าร่วมเซิร์ฟเวอร์สำเร็จ!", "**JobId:** \`" .. tostring(game.JobId) .. "\`", 65280)
+
+GuiService.ErrorMessageChanged:Connect(function(errorMsg)
+    if errorMsg and errorMsg ~= "" then
+        sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680)
+    end
+end)
+EOF
+        echo -e "${C_GREEN}✔️ เพิ่มไฟล์ลงใน: $folder สำเร็จ${C_RESET}"
+    done
+
+    echo -e "${C_CYAN}🎉 ติดตั้ง Webhook พร้อมระบบแยกบัญชีเรียบร้อยแล้ว!${C_RESET}"
+    read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
+}
+
+# ==========================================
+# เมนู 2: ระบบค้นหาจออัตโนมัติ (Auto Setup)
 # ==========================================
 start_auto_setup() {
     show_header
     echo -e "${C_CYAN}--- Automatic Setup (Detect Packages) ---${C_RESET}"
-    echo ""
     echo -e "${C_YELLOW}🔄 ระบบกำลังค้นหาแพ็กเกจโคลนทั้งหมด...${C_RESET}"
-    sleep 1
-
+    
     pm list packages | grep "roblox.clien" | cut -f 2 -d ':' > "$CONFIG_FILE"
     screen_count=$(wc -l < "$CONFIG_FILE")
 
@@ -39,16 +124,15 @@ start_auto_setup() {
             echo -e "   - $pkg"
         done
         echo ""
-        echo -e "${C_GREEN}🎉 บันทึกข้อมูลสำเร็จ! คุณสามารถไปที่เมนู Auto Rejoin ได้เลย${C_RESET}"
+        echo -e "${C_GREEN}🎉 บันทึกข้อมูลสำเร็จ! ไปที่เมนู Auto Rejoin ได้เลย${C_RESET}"
     else
-        echo -e "${C_RED}❌ ไม่พบแพ็กเกจโคลนที่ขึ้นต้นด้วย 'roblox.clien' ในเครื่อง!${C_RESET}"
+        echo -e "${C_RED}❌ ไม่พบแพ็กเกจโคลนที่ขึ้นต้นด้วย 'roblox.clien'${C_RESET}"
     fi
-    
     sleep 4
 }
 
 # ==========================================
-# เมนู 1: ระบบ Rejoin พร้อมเช็คสถานะและ Toast
+# เมนู 1: ระบบ Rejoin (เพิ่มระบบ Clear Cache)
 # ==========================================
 start_auto_rejoin() {
     show_header
@@ -82,40 +166,26 @@ start_auto_rejoin() {
         echo -e "${C_CYAN}[$current_time] 🔄 กำลังดำเนินการรันทั้งหมด...${C_RESET}"
         echo "============================================================"
         
+        # --- ระบบล้างแคชก่อนเปิดเกม ---
+        echo -e "${C_YELLOW}🧹 ล้างไฟล์ขยะ (Cache) เพื่อลดอาการเด้งหลุด...${C_RESET}"
+        while IFS= read -r pkg || [ -n "$pkg" ]; do
+            cache_path="/storage/emulated/0/Android/data/$pkg/cache"
+            if [ -d "$cache_path" ]; then
+                rm -rf "$cache_path"/* 2>/dev/null
+            fi
+        done < "$CONFIG_FILE"
+        echo -e "${C_GREEN}✅ ล้างแคชสำเร็จ!${C_RESET}"
+        echo "------------------------------------------------------------"
+        
         while IFS= read -r pkg || [ -n "$pkg" ]; do
             echo -e "${C_YELLOW}🛑 Killing process: $pkg...${C_RESET}"
             am force-stop "$pkg" > /dev/null 2>&1
             sleep 2
             
-            max_retries=3
-            attempt=1
-            success=0
-
-            while [ $attempt -le $max_retries ]; do
-                echo -e "${C_GREEN}🚀 Launching: $pkg (รอบที่ $attempt)...${C_RESET}"
-                am start -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "$pkg" > /dev/null 2>&1
-                
-                sleep 4 
-                
-                if pidof "$pkg" > /dev/null; then
-                    echo -e "${C_CYAN}✅ เปิดสำเร็จ!${C_RESET}"
-                    success=1
-                    break
-                else
-                    echo -e "${C_RED}⚠️ เปิดไม่สำเร็จ กำลังลองใหม่...${C_RESET}"
-                    attempt=$((attempt + 1))
-                fi
-            done
-
-            if [ $success -eq 0 ]; then
-                echo -e "${C_RED}❌ ข้ามจอ $pkg เนื่องจากเปิดไม่สำเร็จ $max_retries ครั้ง${C_RESET}"
-                
-                # แสดงแจ้งเตือน Toast ป๊อปอัพบนหน้าจอมือถือ
-                if command -v termux-toast > /dev/null 2>&1; then
-                    termux-toast -b red -c white "แจ้งเตือน: เปิดจอ $pkg ไม่สำเร็จ!"
-                fi
-            fi
-
+            echo -e "${C_GREEN}🚀 Launching: $pkg...${C_RESET}"
+            am start -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "$pkg" > /dev/null 2>&1
+            
+            echo -e "${C_CYAN}✅ ส่งคำสั่งเปิดจอสำเร็จ!${C_RESET}"
             echo -e "${C_PURPLE}💤 พักเครื่อง $delay_between วินาที ก่อนเปิดจอถัดไป...${C_RESET}"
             sleep "$delay_between"
             
@@ -133,9 +203,9 @@ start_auto_rejoin() {
 while true; do
     show_header
     echo -e "${C_CYAN}Available Features:${C_RESET}"
-    echo -e "${C_CYAN}1.${C_RESET} Start Auto Rejoin (Multi-Account)"
+    echo -e "${C_CYAN}1.${C_RESET} Start Auto Rejoin (Multi-Account & Auto Clear Cache)"
     echo -e "${C_CYAN}2.${C_RESET} Start Auto Setup (Detect Packages)"
-    echo -e "${C_CYAN}3.${C_RESET} View Saved Packages"
+    echo -e "${C_CYAN}3.${C_RESET} Add Discord Webhook to Autoexec"
     echo -e "${C_CYAN}0.${C_RESET} Exit"
     echo ""
     read -p "Select an option: " opt_main
@@ -143,17 +213,7 @@ while true; do
     case $opt_main in
         1) start_auto_rejoin ;;
         2) start_auto_setup ;;
-        3) 
-            show_header
-            echo -e "${C_CYAN}--- Saved Packages ---${C_RESET}"
-            if [ -f "$CONFIG_FILE" ]; then
-                cat "$CONFIG_FILE"
-            else
-                echo -e "${C_RED}No packages saved yet.${C_RESET}"
-            fi
-            echo ""
-            read -p "Press Enter to return..."
-            ;;
+        3) setup_webhook ;;
         0) clear; exit 0 ;;
         *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
     esac
