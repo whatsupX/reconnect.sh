@@ -20,7 +20,7 @@ show_header() {
     echo -e "${C_CYAN}| '__/ _ \/ __/ _ \| '_ \| '_ \ / _ \/ __| __|${C_RESET}"
     echo -e "${C_CYAN}| | |  __/ (_| (_) | | | | | | |  __/ (__| |_${C_RESET}"
     echo -e "${C_CYAN}|_|  \___|\___\___/|_| |_|_| |_|\___|\___|\__|${C_RESET}"
-    echo "              Made for Multi-Account v4.0 (Live UI)"
+    echo "              Made for Multi-Account v4.1 (Live UI & 2-Step Launch)"
     echo ""
 }
 
@@ -122,7 +122,6 @@ draw_dashboard() {
         local stat="${statuses[$j]}"
         local col="${colors[$j]}"
         local info="${infos[$j]}"
-        # วาดตารางพร้อมใส่สี
         printf "| %-16s | ${col}%-16s${C_RESET} | %-18s |\n" "$pkg" "$stat" "$info"
     done
     
@@ -131,7 +130,7 @@ draw_dashboard() {
 }
 
 # ==========================================
-# เมนู 1: ระบบ Rejoin (Live UI)
+# เมนู 1: ระบบ Rejoin (Live UI + 2-Step Launch)
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -152,7 +151,6 @@ start_auto_rejoin() {
     read -p "⏳ หน่วงเวลาระหว่างเปิดแต่ละจอกี่วินาที? (แนะนำ 5-10): " delay_between
     [[ ! "$delay_between" =~ ^[0-9]+$ ]] && delay_between=7
 
-    # ดึงชื่อแพ็กเกจใส่ Array
     pkgs=()
     while IFS= read -r line; do [[ -n "$line" ]] && pkgs+=("$line"); done < "$CONFIG_FILE"
     
@@ -160,9 +158,7 @@ start_auto_rejoin() {
     colors=()
     infos=()
 
-    # ลูปทำงานหลัก
     while true; do
-        # เซ็ตค่าเริ่มต้นตาราง
         for i in "${!pkgs[@]}"; do
             statuses[$i]="รอคิว (Waiting)"
             colors[$i]="$C_YELLOW"
@@ -171,7 +167,6 @@ start_auto_rejoin() {
         
         global_msg="${C_CYAN}🧹 กำลังเคลียร์แคชไฟล์ขยะ...${C_RESET}"
         
-        # 1. ล้างแคชทั้งหมด
         for i in "${!pkgs[@]}"; do
             statuses[$i]="ล้างแคช (Cache)"
             colors[$i]="$C_CYAN"
@@ -184,7 +179,6 @@ start_auto_rejoin() {
 
         global_msg="${C_GREEN}🚀 กำลังรันระบบเปิดจอ...${C_RESET}"
 
-        # 2. ปิดและเปิดทีละจอ
         for i in "${!pkgs[@]}"; do
             statuses[$i]="กำลังปิด (Kill)"
             colors[$i]="$C_RED"
@@ -193,16 +187,25 @@ start_auto_rejoin() {
             am force-stop "${pkgs[$i]}" > /dev/null 2>&1
             sleep 2
             
-            statuses[$i]="กำลังเปิด (Launch)"
+            statuses[$i]="กำลังเปิด (App)"
             colors[$i]="$C_GREEN"
+            infos[$i]="เปิดหน้าแรก..."
+            draw_dashboard
+            
+            # 1. ปลุกแอพให้เปิดขึ้นมาก่อน
+            monkey -p "${pkgs[$i]}" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
+            sleep 4
+            
+            statuses[$i]="ส่งเข้าแมพ (Map)"
             infos[$i]="Place ID"
             draw_dashboard
+            
+            # 2. ยิงคำสั่งเข้าแมพตามหลัง
             am start -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "${pkgs[$i]}" > /dev/null 2>&1
             
             statuses[$i]="รันปกติ (Running)"
             colors[$i]="$C_PURPLE"
             
-            # นับถอยหลังพักเครื่อง
             for (( w=$delay_between; w>0; w-- )); do
                 infos[$i]="พักเครื่อง ${w}s..."
                 draw_dashboard
@@ -212,7 +215,6 @@ start_auto_rejoin() {
             draw_dashboard
         done
 
-        # 3. รอเวลารอบถัดไปแบบนับถอยหลัง
         for (( w=$delay_time; w>0; w-- )); do
             global_msg="รอรอบถัดไปใน: ${C_YELLOW}${w} วินาที${C_RESET}"
             draw_dashboard
