@@ -21,13 +21,13 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v6.9 (Terminal UI Fix)        ${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v7.0 (Batch Input & UI Fix)   ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# ระบบตรวจสอบสิทธิ์ Root (อัปเกรดซ่อมหน้าจอ)
+# ระบบตรวจสอบสิทธิ์ Root
 # ==========================================
 check_root() {
     clear
@@ -41,12 +41,10 @@ check_root() {
         exit 1
     else
         echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว! พร้อมใช้งาน${C_RESET}"
-        sleep 2
+        sleep 1
     fi
-    
-    # ซ่อมแซมหน้าจอ Termux หลังจากโดน Root แทรกแซง
+    # ซ่อมหน้าจอหลังรัน Root
     stty sane 2>/dev/null
-    reset 2>/dev/null
 }
 
 # ==========================================
@@ -110,14 +108,14 @@ task.spawn(function()
     end
 end)
 EOF
-        echo -e "${C_GREEN}✔️ เพิ่มไฟล์ระบบชีพจรแบบ Universal ลงใน: $folder สำเร็จ${C_RESET}"
+        echo -e "${C_GREEN}✔️ เพิ่มไฟล์ระบบชีพจรลงใน: $folder สำเร็จ${C_RESET}"
     done
     echo ""
     read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
 }
 
 # ==========================================
-# เมนู 2: ระบบค้นหาจออัตโนมัติ
+# เมนู 2: ระบบค้นหาจออัตโนมัติ (พิมพ์ให้ครบก่อนค่อยเซฟ)
 # ==========================================
 start_auto_setup() {
     clear
@@ -125,24 +123,36 @@ start_auto_setup() {
     echo -e "${C_CYAN}--- Automatic Setup (Detect Packages & Bind Accounts) ---${C_RESET}"
     echo -e "${C_YELLOW}🔄 ระบบกำลังค้นหาแพ็กเกจโคลนทั้งหมด...${C_RESET}"
     
-    su -c "pm list packages" | grep "roblox.clien" | cut -f 2 -d ':' > "temp_pkg.txt"
+    # ถอด su ออก เพื่อป้องกันตัวหนังสือไหลเป็นขั้นบันได
+    pm list packages | grep "roblox.clien" | cut -f 2 -d ':' > "temp_pkg.txt"
+    stty sane 2>/dev/null
+    
     screen_count=$(wc -l < "temp_pkg.txt")
 
     if [ "$screen_count" -gt 0 ]; then
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
         echo -e "${C_YELLOW}⚠️ เพื่อให้ Watchdog ทำงานได้ กรุณาใส่ Username ให้ตรงกับแต่ละจอ${C_RESET}"
+        echo ""
         
         local found_pkgs=()
         while IFS= read -r line; do [[ -n "$line" ]] && found_pkgs+=("$line"); done < "temp_pkg.txt"
         
-        > "$CONFIG_FILE"
+        # 1. รับค่าทั้งหมดเก็บไว้ในตัวแปรก่อน (ยังไม่เซฟ)
+        local input_data=()
         for pkg in "${found_pkgs[@]}"; do
             read -p "👤 ใส่ Username ของจอ [$pkg]: " uname
             [[ -z "$uname" ]] && uname="Unknown"
-            echo "$pkg|$uname" >> "$CONFIG_FILE"
+            input_data+=("$pkg|$uname")
         done
+        
+        # 2. เมื่อพิมพ์ครบทุกอันแล้ว ถึงจะทำการเซฟรวดเดียว
+        > "$CONFIG_FILE"
+        for data in "${input_data[@]}"; do
+            echo "$data" >> "$CONFIG_FILE"
+        done
+        
         rm "temp_pkg.txt"
-        echo -e "${C_GREEN}🎉 บันทึกข้อมูลและผูกบัญชีสำเร็จ!${C_RESET}"
+        echo -e "\n${C_GREEN}🎉 บันทึกข้อมูลและผูกบัญชีครบทั้งหมดเรียบร้อยแล้ว!${C_RESET}"
         sleep 2
     else
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจโคลนที่ขึ้นต้นด้วย 'roblox.clien'${C_RESET}"
@@ -218,7 +228,6 @@ relaunch_pkg() {
     statuses[$idx]="กำลังโหลด (Loading)"
     colors[$idx]="$C_YELLOW"
     
-    # ป้องกันหน้าจอบั๊กหลังจากการเรียกใช้ Root
     stty sane 2>/dev/null
 }
 
@@ -316,7 +325,7 @@ start_auto_rejoin() {
 trap 'tput cnorm; clear; stty sane; exit' INT
 
 # ==========================================
-# เริ่มต้นการทำงาน (ตรวจสอบ Root ก่อนเลย)
+# เริ่มต้นการทำงาน 
 # ==========================================
 check_root
 
