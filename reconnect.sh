@@ -21,7 +21,7 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v7.0 (Batch Input & UI Fix)   ${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v7.1 (Safe Setup Guard)       ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
 }
@@ -43,17 +43,17 @@ check_root() {
         echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว! พร้อมใช้งาน${C_RESET}"
         sleep 1
     fi
-    # ซ่อมหน้าจอหลังรัน Root
     stty sane 2>/dev/null
 }
 
 # ==========================================
-# เมนู 3: ระบบฝัง Lua Script
+# เมนู 3: ระบบฝัง Lua Script (อัปเกรดกันพลาด)
 # ==========================================
 setup_webhook() {
     clear
     show_header
     echo -e "${C_CYAN}--- Setup Discord Webhook & Autoexec ---${C_RESET}"
+    echo -e "${C_YELLOW}[ กด Enter โดยไม่พิมพ์อะไร เพื่อยกเลิกและกลับเมนูหลัก ]${C_RESET}"
     
     read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook: " webhook_url
     [[ -z "$webhook_url" ]] && return
@@ -115,15 +115,26 @@ EOF
 }
 
 # ==========================================
-# เมนู 2: ระบบค้นหาจออัตโนมัติ (พิมพ์ให้ครบก่อนค่อยเซฟ)
+# เมนู 2: ระบบค้นหาจออัตโนมัติ (เพิ่มระบบป้องกันข้อมูลหาย)
 # ==========================================
 start_auto_setup() {
     clear
     show_header
     echo -e "${C_CYAN}--- Automatic Setup (Detect Packages & Bind Accounts) ---${C_RESET}"
+    
+    # เช็คว่ามีข้อมูลเดิมอยู่หรือไม่
+    if [ -s "$CONFIG_FILE" ]; then
+        echo -e "${C_YELLOW}⚠️ พบข้อมูลหน้าจอและบัญชีที่เคยบันทึกไว้แล้ว!${C_RESET}"
+        read -p "❓ ต้องการเคลียร์ข้อมูลและตั้งค่าใหม่หรือไม่? (y/n) [กด Enter เพื่อยกเลิก]: " confirm_reset
+        if [[ "$confirm_reset" != "y" && "$confirm_reset" != "Y" ]]; then
+            echo -e "${C_GREEN}✅ ยกเลิกการตั้งค่า (ยังคงใช้ข้อมูลบัญชีเดิม)${C_RESET}"
+            sleep 2
+            return
+        fi
+    fi
+
     echo -e "${C_YELLOW}🔄 ระบบกำลังค้นหาแพ็กเกจโคลนทั้งหมด...${C_RESET}"
     
-    # ถอด su ออก เพื่อป้องกันตัวหนังสือไหลเป็นขั้นบันได
     pm list packages | grep "roblox.clien" | cut -f 2 -d ':' > "temp_pkg.txt"
     stty sane 2>/dev/null
     
@@ -137,7 +148,6 @@ start_auto_setup() {
         local found_pkgs=()
         while IFS= read -r line; do [[ -n "$line" ]] && found_pkgs+=("$line"); done < "temp_pkg.txt"
         
-        # 1. รับค่าทั้งหมดเก็บไว้ในตัวแปรก่อน (ยังไม่เซฟ)
         local input_data=()
         for pkg in "${found_pkgs[@]}"; do
             read -p "👤 ใส่ Username ของจอ [$pkg]: " uname
@@ -145,7 +155,6 @@ start_auto_setup() {
             input_data+=("$pkg|$uname")
         done
         
-        # 2. เมื่อพิมพ์ครบทุกอันแล้ว ถึงจะทำการเซฟรวดเดียว
         > "$CONFIG_FILE"
         for data in "${input_data[@]}"; do
             echo "$data" >> "$CONFIG_FILE"
