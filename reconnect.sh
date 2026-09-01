@@ -21,13 +21,13 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v6.5 (Force Clear Task)       ${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v6.6 (Ultimate Kill Bypass)   ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# เมนู 3: ระบบฝัง Lua Script (แบบครอบจักรวาล)
+# เมนู 3: ระบบฝัง Lua Script
 # ==========================================
 setup_webhook() {
     clear
@@ -52,25 +52,20 @@ setup_webhook() {
         
         cat <<EOF > "$lua_path"
 if not game:IsLoaded() then game.Loaded:Wait() end
-
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService")
 local player = Players.LocalPlayer
 local webhookUrl = "$webhook_url"
-
 local playerName = player and player.Name or "Unknown"
 local displayName = player and player.DisplayName or "Unknown"
-
 local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
 
 local function sendWebhook(title, desc, colorHex)
     if webhookUrl == "" or not httpRequest then return end
     local data = {
         ["embeds"] = {{
-            ["title"] = title,
-            ["description"] = desc,
-            ["color"] = colorHex,
+            ["title"] = title, ["description"] = desc, ["color"] = colorHex,
             ["fields"] = {
                 {["name"] = "👤 Username", ["value"] = playerName, ["inline"] = true},
                 {["name"] = "🏷️ Display Name", ["value"] = displayName, ["inline"] = true}
@@ -78,34 +73,28 @@ local function sendWebhook(title, desc, colorHex)
             ["footer"] = {["text"] = "TH REJOIN TOOL"}
         }}
     }
-    pcall(function()
-        httpRequest({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(data)})
-    end)
+    pcall(function() httpRequest({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(data)}) end)
 end
 
 sendWebhook("✅ เข้าร่วมเซิร์ฟเวอร์สำเร็จ!", "**JobId:** \`" .. tostring(game.JobId) .. "\`", 65280)
-
 GuiService.ErrorMessageChanged:Connect(function(errorMsg)
     if errorMsg and errorMsg ~= "" then sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) end
 end)
 
 task.spawn(function()
     while task.wait(10) do
-        pcall(function()
-            writefile("ping_" .. playerName .. ".txt", tostring(os.time()))
-        end)
+        pcall(function() writefile("ping_" .. playerName .. ".txt", tostring(os.time())) end)
     end
 end)
 EOF
         echo -e "${C_GREEN}✔️ เพิ่มไฟล์ระบบชีพจรแบบ Universal ลงใน: $folder สำเร็จ${C_RESET}"
     done
-    
     echo ""
     read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
 }
 
 # ==========================================
-# เมนู 2: ระบบค้นหาจออัตโนมัติ (ผูก Username)
+# เมนู 2: ระบบค้นหาจออัตโนมัติ
 # ==========================================
 start_auto_setup() {
     clear
@@ -118,7 +107,7 @@ start_auto_setup() {
 
     if [ "$screen_count" -gt 0 ]; then
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
-        echo -e "${C_YELLOW}⚠️ เพื่อให้ Watchdog ทำงานได้ กรุณาใส่ Username (ชื่อตัวละคร ไม่ใช่ชื่อเล่น) ให้ตรงกับแต่ละจอ${C_RESET}"
+        echo -e "${C_YELLOW}⚠️ เพื่อให้ Watchdog ทำงานได้ กรุณาใส่ Username ให้ตรงกับแต่ละจอ${C_RESET}"
         
         local found_pkgs=()
         while IFS= read -r line; do [[ -n "$line" ]] && found_pkgs+=("$line"); done < "temp_pkg.txt"
@@ -129,7 +118,6 @@ start_auto_setup() {
             [[ -z "$uname" ]] && uname="Unknown"
             echo "$pkg|$uname" >> "$CONFIG_FILE"
         done
-        
         rm "temp_pkg.txt"
         echo -e "${C_GREEN}🎉 บันทึกข้อมูลและผูกบัญชีสำเร็จ!${C_RESET}"
         sleep 2
@@ -150,7 +138,6 @@ draw_dashboard() {
     echo "================================================================="
     printf "| %-16s | %-16s | %-20s |\n" "📱 Package" "👤 Account" "📌 Status"
     echo "================================================================="
-    
     for j in "${!pkgs[@]}"; do
         local pkg="${pkgs[$j]}"
         local acc="${unames[$j]}"
@@ -158,13 +145,12 @@ draw_dashboard() {
         local col="${colors[$j]}"
         printf "| %-16s | %-16s | ${col}%-20s${C_RESET} |\n" "$pkg" "$acc" "$stat"
     done
-    
     echo "================================================================="
     echo -e "${C_RED}[ กด Ctrl+C เพื่อหยุดการทำงาน ]${C_RESET}"
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอเฉพาะแอปที่หลุด (อัปเกรดล้าง Task)
+# ฟังก์ชันเปิดจอเฉพาะแอปที่หลุด (อัปเกรด Kill ขีดสุด)
 # ==========================================
 relaunch_pkg() {
     local p="$1"
@@ -180,8 +166,10 @@ relaunch_pkg() {
     colors[$idx]="$C_RED"
     draw_dashboard
     
-    # คำสั่งพื้นฐาน
-    am force-stop "$p" > /dev/null 2>&1
+    # 💥 โจมตีทะลวงฟองสบู่ (Floating Window Bypass)
+    su -c "am force-stop $p" > /dev/null 2>&1           # ลองใช้สิทธิ์ Root 
+    am force-stop --user all "$p" > /dev/null 2>&1      # บังคับปิดทุกโปรไฟล์ผู้ใช้
+    am force-stop "$p" > /dev/null 2>&1                 # คำสั่งมาตรฐาน
     sleep 2
 
     statuses[$idx]="เปิดหน้าแรก"
@@ -196,8 +184,6 @@ relaunch_pkg() {
     
     statuses[$idx]="ส่งเข้าแมพ (Map)"
     draw_dashboard
-    
-    # [จุดสำคัญ]: เพิ่ม -S (Force stop อีกรอบให้ชัวร์) และ -f 0x10008000 (สั่งระเบิดประวัติจอเก่าที่พับค้างไว้ทิ้งทั้งหมด)
     am start -S -f 0x10008000 -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "$p" > /dev/null 2>&1
     
     launch_times[$idx]=$(date +%s)
@@ -260,17 +246,13 @@ start_auto_rejoin() {
             
             if [ -z "${ping_paths[$i]}" ] || [ ! -f "${ping_paths[$i]}" ]; then
                 found_path=$(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${uname}.txt" 2>/dev/null | head -n 1)
-                if [ -n "$found_path" ]; then
-                    ping_paths[$i]="$found_path"
-                fi
+                if [ -n "$found_path" ]; then ping_paths[$i]="$found_path"; fi
             fi
 
             if [ -n "${ping_paths[$i]}" ] && [ -f "${ping_paths[$i]}" ]; then
                 last_ping=$(cat "${ping_paths[$i]}" 2>/dev/null)
-                
                 if [[ "$last_ping" =~ ^[0-9]+$ ]]; then
                     diff=$((current_time - last_ping))
-
                     if [ $diff -gt 60 ]; then
                         statuses[$i]="หลุด! (Dead > 60s)"
                         colors[$i]="$C_RED"
@@ -284,7 +266,6 @@ start_auto_rejoin() {
             else
                 launched_at=${launch_times[$i]:-0}
                 wait_time=$((current_time - launched_at))
-                
                 if [ $wait_time -gt 150 ]; then 
                     statuses[$i]="จอค้าง! (Timeout)"
                     colors[$i]="$C_RED"
@@ -296,11 +277,9 @@ start_auto_rejoin() {
                 fi
             fi
         done
-        
         draw_dashboard
         sleep 5
     done
-    
     tput cnorm 
 }
 
@@ -322,7 +301,6 @@ while true; do
     echo -e "${C_CYAN}0.${C_RESET} Exit"
     echo ""
     read -p "Select an option: " opt_main
-
     case $opt_main in
         1) start_auto_rejoin ;;
         2) start_auto_setup ;;
