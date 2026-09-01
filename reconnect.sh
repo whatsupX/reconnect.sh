@@ -21,9 +21,29 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v6.6 (Ultimate Kill Bypass)   ${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v6.8 (Root Checker)           ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
+}
+
+# ==========================================
+# ระบบตรวจสอบสิทธิ์ Root
+# ==========================================
+check_root() {
+    clear
+    show_header
+    echo -e "${C_CYAN}🔍 กำลังตรวจสอบสิทธิ์ Root ในเครื่อง...${C_RESET}"
+    
+    # ลองรันคำสั่งด้วย su เพื่อเช็คว่ามีสิทธิ์ Root หรือไม่
+    if ! su -c 'true' > /dev/null 2>&1; then
+        echo -e "${C_RED}❌ ตรวจพบว่าเครื่องของคุณยังไม่ได้ Root! หรือยังไม่ได้อนุญาตสิทธิ์ให้ Termux${C_RESET}"
+        echo -e "${C_YELLOW}⚠️ กรุณาไปเปิดใช้งาน Root ในการตั้งค่าของ Cloud Phone หรือกด Grant (อนุญาต) สิทธิ์ก่อนใช้งาน${C_RESET}"
+        echo ""
+        exit 1
+    else
+        echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว! พร้อมใช้งาน${C_RESET}"
+        sleep 2
+    fi
 }
 
 # ==========================================
@@ -102,7 +122,7 @@ start_auto_setup() {
     echo -e "${C_CYAN}--- Automatic Setup (Detect Packages & Bind Accounts) ---${C_RESET}"
     echo -e "${C_YELLOW}🔄 ระบบกำลังค้นหาแพ็กเกจโคลนทั้งหมด...${C_RESET}"
     
-    pm list packages | grep "roblox.clien" | cut -f 2 -d ':' > "temp_pkg.txt"
+    su -c "pm list packages" | grep "roblox.clien" | cut -f 2 -d ':' > "temp_pkg.txt"
     screen_count=$(wc -l < "temp_pkg.txt")
 
     if [ "$screen_count" -gt 0 ]; then
@@ -150,7 +170,7 @@ draw_dashboard() {
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอเฉพาะแอปที่หลุด (อัปเกรด Kill ขีดสุด)
+# ฟังก์ชันเปิดจอเฉพาะแอปที่หลุด (Ultimate Kill Bypass)
 # ==========================================
 relaunch_pkg() {
     local p="$1"
@@ -160,21 +180,21 @@ relaunch_pkg() {
     colors[$idx]="$C_CYAN"
     draw_dashboard
     cache_path="/storage/emulated/0/Android/data/$p/cache"
-    if [ -d "$cache_path" ]; then rm -rf "$cache_path"/* 2>/dev/null; fi
+    if [ -d "$cache_path" ]; then su -c "rm -rf $cache_path/*" 2>/dev/null; fi
 
     statuses[$idx]="กำลังปิด (Kill)"
     colors[$idx]="$C_RED"
     draw_dashboard
     
-    # 💥 โจมตีทะลวงฟองสบู่ (Floating Window Bypass)
-    su -c "am force-stop $p" > /dev/null 2>&1           # ลองใช้สิทธิ์ Root 
-    am force-stop --user all "$p" > /dev/null 2>&1      # บังคับปิดทุกโปรไฟล์ผู้ใช้
-    am force-stop "$p" > /dev/null 2>&1                 # คำสั่งมาตรฐาน
+    # 💥 โจมตีทะลวงฟองสบู่ด้วย Root
+    su -c "am force-stop $p" > /dev/null 2>&1
+    su -c "am force-stop --user all $p" > /dev/null 2>&1
     sleep 2
 
     statuses[$idx]="เปิดหน้าแรก"
     colors[$idx]="$C_GREEN"
-    monkey -p "$p" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
+    
+    su -c "monkey -p \"$p\" -c android.intent.category.LAUNCHER 1" > /dev/null 2>&1
     
     for (( w=5; w>0; w-- )); do
         statuses[$idx]="รอเข้าเกม ${w}s..."
@@ -184,12 +204,14 @@ relaunch_pkg() {
     
     statuses[$idx]="ส่งเข้าแมพ (Map)"
     draw_dashboard
-    am start -S -f 0x10008000 -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "$p" > /dev/null 2>&1
+    
+    su -c "am start -f 0x10000000 -a android.intent.action.VIEW -d \"roblox://placeId=$place_id\" -p \"$p\"" > /dev/null 2>&1
     
     launch_times[$idx]=$(date +%s)
     if [ -n "${ping_paths[$idx]}" ] && [ -f "${ping_paths[$idx]}" ]; then
-        rm "${ping_paths[$idx]}" 2>/dev/null
+        su -c "rm \"${ping_paths[$idx]}\"" 2>/dev/null
     fi
+    ping_paths[$idx]=""
     
     statuses[$idx]="กำลังโหลด (Loading)"
     colors[$idx]="$C_YELLOW"
@@ -287,6 +309,11 @@ start_auto_rejoin() {
 # ดักจับ Ctrl+C เพื่อคืนค่า Cursor
 # ==========================================
 trap 'tput cnorm; clear; exit' INT
+
+# ==========================================
+# เริ่มต้นการทำงาน (ตรวจสอบ Root ก่อนเลย)
+# ==========================================
+check_root
 
 # ==========================================
 # เมนูหลัก (Main Menu)
