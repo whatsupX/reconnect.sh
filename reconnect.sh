@@ -21,20 +21,19 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v6.8 (Root Checker)           ${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v6.9 (Terminal UI Fix)        ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# ระบบตรวจสอบสิทธิ์ Root
+# ระบบตรวจสอบสิทธิ์ Root (อัปเกรดซ่อมหน้าจอ)
 # ==========================================
 check_root() {
     clear
     show_header
     echo -e "${C_CYAN}🔍 กำลังตรวจสอบสิทธิ์ Root ในเครื่อง...${C_RESET}"
     
-    # ลองรันคำสั่งด้วย su เพื่อเช็คว่ามีสิทธิ์ Root หรือไม่
     if ! su -c 'true' > /dev/null 2>&1; then
         echo -e "${C_RED}❌ ตรวจพบว่าเครื่องของคุณยังไม่ได้ Root! หรือยังไม่ได้อนุญาตสิทธิ์ให้ Termux${C_RESET}"
         echo -e "${C_YELLOW}⚠️ กรุณาไปเปิดใช้งาน Root ในการตั้งค่าของ Cloud Phone หรือกด Grant (อนุญาต) สิทธิ์ก่อนใช้งาน${C_RESET}"
@@ -44,6 +43,10 @@ check_root() {
         echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว! พร้อมใช้งาน${C_RESET}"
         sleep 2
     fi
+    
+    # ซ่อมแซมหน้าจอ Termux หลังจากโดน Root แทรกแซง
+    stty sane 2>/dev/null
+    reset 2>/dev/null
 }
 
 # ==========================================
@@ -170,7 +173,7 @@ draw_dashboard() {
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอเฉพาะแอปที่หลุด (Ultimate Kill Bypass)
+# ฟังก์ชันเปิดจอเฉพาะแอปที่หลุด
 # ==========================================
 relaunch_pkg() {
     local p="$1"
@@ -186,7 +189,6 @@ relaunch_pkg() {
     colors[$idx]="$C_RED"
     draw_dashboard
     
-    # 💥 โจมตีทะลวงฟองสบู่ด้วย Root
     su -c "am force-stop $p" > /dev/null 2>&1
     su -c "am force-stop --user all $p" > /dev/null 2>&1
     sleep 2
@@ -215,6 +217,9 @@ relaunch_pkg() {
     
     statuses[$idx]="กำลังโหลด (Loading)"
     colors[$idx]="$C_YELLOW"
+    
+    # ป้องกันหน้าจอบั๊กหลังจากการเรียกใช้ Root
+    stty sane 2>/dev/null
 }
 
 # ==========================================
@@ -308,7 +313,7 @@ start_auto_rejoin() {
 # ==========================================
 # ดักจับ Ctrl+C เพื่อคืนค่า Cursor
 # ==========================================
-trap 'tput cnorm; clear; exit' INT
+trap 'tput cnorm; clear; stty sane; exit' INT
 
 # ==========================================
 # เริ่มต้นการทำงาน (ตรวจสอบ Root ก่อนเลย)
@@ -332,7 +337,7 @@ while true; do
         1) start_auto_rejoin ;;
         2) start_auto_setup ;;
         3) setup_webhook ;;
-        0) clear; tput cnorm; exit 0 ;;
+        0) clear; tput cnorm; stty sane; exit 0 ;;
         *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
     esac
 done
