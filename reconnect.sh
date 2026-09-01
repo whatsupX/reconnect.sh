@@ -13,7 +13,7 @@ CONFIG_FILE="roblox_accounts.cfg"
 LUA_FILENAME="status_check.lua"
 
 # ==========================================
-# ฟังก์ชันแสดงส่วนหัว (โลโก้ใหม่)
+# ฟังก์ชันแสดงส่วนหัว
 # ==========================================
 show_header() {
     echo -e "${C_CYAN}  _____ _  _   ___ ___ _  ___ ___ _  _ ${C_RESET}"
@@ -21,7 +21,7 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}              TOOL v5.0${C_RESET}"
+    echo -e "${C_GREEN}              TOOL v5.1${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX${C_RESET}"
     echo ""
 }
@@ -189,8 +189,7 @@ start_auto_rejoin() {
             infos[$i]="Force Stop"
             draw_dashboard
             
-            am start -a android.intent.action.MAIN -c android.intent.category.HOME > /dev/null 2>&1
-            sleep 1
+            # ลบคำสั่งกลับหน้า Home ออก ให้ Kill เฉพาะแอปเป้าหมายตรงๆ
             am force-stop "${pkgs[$i]}" > /dev/null 2>&1
             sleep 2
             
