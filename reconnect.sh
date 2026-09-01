@@ -21,13 +21,13 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}       TOOL v6.0 (Smart Watchdog)      ${C_RESET}"
+    echo -e "${C_GREEN}       TOOL v6.1 (Smart Watchdog)      ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# เมนู 3: ระบบฝัง Lua Script (อัปเดตระบบส่งชีพจร)
+# เมนู 3: ระบบฝัง Lua Script (ระบบส่งชีพจร)
 # ==========================================
 setup_webhook() {
     clear
@@ -46,7 +46,6 @@ setup_webhook() {
         lua_path="$folder/$LUA_FILENAME"
         [[ -f "$lua_path" ]] && rm "$lua_path"
         
-        # ดึงชื่อโฟลเดอร์ (ซึ่งมักจะเป็นชื่อแพ็กเกจ เช่น roblox.clienv)
         pkg_name=$(basename "$folder")
 
         cat <<EOF > "$lua_path"
@@ -64,7 +63,6 @@ local displayName = player and player.DisplayName or "Unknown"
 
 local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
 
--- ฟังก์ชันส่งแจ้งเตือน
 local function sendWebhook(title, desc, colorHex)
     if webhookUrl == "" or not httpRequest then return end
     local data = {
@@ -96,11 +94,9 @@ GuiService.ErrorMessageChanged:Connect(function(errorMsg)
     end
 end)
 
--- ระบบส่งชีพจร (Heartbeat) ให้ Termux รู้ว่ายังไม่หลุด
 task.spawn(function()
     while task.wait(20) do
         pcall(function()
-            -- บันทึกไฟล์ชีพจรที่มี ชื่อตัวละคร|เวลาปัจจุบัน
             writefile("ping_" .. packageName .. ".txt", playerName .. "|" .. tostring(os.time()))
         end)
     end
@@ -172,8 +168,8 @@ relaunch_pkg() {
     statuses[$idx]="กำลังปิด (Kill)"
     colors[$idx]="$C_RED"
     draw_dashboard
-    am start -a android.intent.action.MAIN -c android.intent.category.HOME > /dev/null 2>&1
-    sleep 1
+    
+    # ถอดคำสั่ง Home ออก ป้องกัน Termux เด้งพับหน้าจอ
     am force-stop "$p" > /dev/null 2>&1
     sleep 2
 
@@ -191,7 +187,6 @@ relaunch_pkg() {
     draw_dashboard
     am start -f 0x10000000 -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "$p" > /dev/null 2>&1
     
-    # รีเซ็ตเวลาเริ่มต้น และลบไฟล์ชีพจรเก่าทิ้งป้องกันการอ่านข้อมูลเก่า
     launch_times[$idx]=$(date +%s)
     if [ -n "${ping_paths[$idx]}" ] && [ -f "${ping_paths[$idx]}" ]; then
         rm "${ping_paths[$idx]}" 2>/dev/null
@@ -217,7 +212,6 @@ start_auto_rejoin() {
     read -p "🎯 Enter Place ID: " place_id
     [[ -z "$place_id" ]] && return
 
-    # หน่วงเวลาครั้งแรก
     read -p "⏳ หน่วงเวลาระหว่างเปิดจอรอบแรกกี่วินาที? (แนะนำ 5-10): " delay_between
     [[ ! "$delay_between" =~ ^[0-9]+$ ]] && delay_between=7
 
@@ -232,7 +226,6 @@ start_auto_rejoin() {
 
     tput civis 
 
-    # เปิดจอทั้งหมดรอบแรก
     global_msg="${C_GREEN}🚀 กำลังรันเปิดจอทั้งหมดในรอบแรก...${C_RESET}"
     for i in "${!pkgs[@]}"; do
         accounts[$i]="กำลังโหลด..."
@@ -240,7 +233,6 @@ start_auto_rejoin() {
         sleep "$delay_between"
     done
 
-    # ลูปเช็คสถานะทุกๆ 5 วินาที
     while true; do
         global_msg="${C_CYAN}👀 ระบบ Watchdog กำลังตรวจสอบการตอบสนอง...${C_RESET}"
         current_time=$(date +%s)
@@ -248,7 +240,6 @@ start_auto_rejoin() {
         for i in "${!pkgs[@]}"; do
             pkg="${pkgs[$i]}"
             
-            # 1. ค้นหาไฟล์ชีพจรของจอนี้ หากยังไม่เคยหาเจอ
             if [ -z "${ping_paths[$i]}" ]; then
                 found_path=$(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${pkg}.txt" 2>/dev/null | head -n 1)
                 if [ -n "$found_path" ]; then
@@ -256,19 +247,16 @@ start_auto_rejoin() {
                 fi
             fi
 
-            # 2. ถ้าเจอไฟล์ชีพจร ให้อ่านข้อมูล
             if [ -n "${ping_paths[$i]}" ] && [ -f "${ping_paths[$i]}" ]; then
                 content=$(cat "${ping_paths[$i]}" 2>/dev/null)
                 acc_name=$(echo "$content" | cut -d'|' -f1)
                 last_ping=$(echo "$content" | cut -d'|' -f2)
                 
-                # หากอ่านไฟล์ได้สำเร็จ
                 if [[ -n "$last_ping" && "$last_ping" =~ ^[0-9]+$ ]]; then
                     diff=$((current_time - last_ping))
                     accounts[$i]="$acc_name"
 
                     if [ $diff -gt 60 ]; then
-                        # ถ้าเงียบไปเกิน 60 วิ แปลว่าหลุด/ค้าง -> สั่งเปิดใหม่!
                         statuses[$i]="หลุด! (Dead > 60s)"
                         colors[$i]="$C_RED"
                         draw_dashboard
@@ -279,12 +267,10 @@ start_auto_rejoin() {
                     fi
                 fi
             else
-                # 3. ถ้ายังไม่เจอไฟล์ชีพจร เช็คว่าโหลดเกมนานเกินไปไหม
                 launched_at=${launch_times[$i]:-0}
                 wait_time=$((current_time - launched_at))
                 
                 if [ $wait_time -gt 150 ]; then 
-                    # ให้เวลาเข้าเกม 2 นาทีครึ่ง ถ้าสคริปต์ยังไม่ทำงาน แปลว่าหลุดตั้งแต่หน้าโหลด
                     statuses[$i]="จอค้าง! (Timeout)"
                     colors[$i]="$C_RED"
                     draw_dashboard
