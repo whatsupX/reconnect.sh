@@ -21,9 +21,17 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v7.1 (Safe Setup Guard)       ${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v7.2 (Anti-Staircase UI)      ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
+}
+
+# ==========================================
+# ฟังก์ชันรันคำสั่ง Root แบบปลอดภัย (ไม่พังหน้าจอ)
+# ==========================================
+safe_su() {
+    su -c "$1" > /dev/null 2>&1
+    stty sane 2>/dev/null
 }
 
 # ==========================================
@@ -47,7 +55,7 @@ check_root() {
 }
 
 # ==========================================
-# เมนู 3: ระบบฝัง Lua Script (อัปเกรดกันพลาด)
+# เมนู 3: ระบบฝัง Lua Script
 # ==========================================
 setup_webhook() {
     clear
@@ -115,14 +123,13 @@ EOF
 }
 
 # ==========================================
-# เมนู 2: ระบบค้นหาจออัตโนมัติ (เพิ่มระบบป้องกันข้อมูลหาย)
+# เมนู 2: ระบบค้นหาจออัตโนมัติ
 # ==========================================
 start_auto_setup() {
     clear
     show_header
     echo -e "${C_CYAN}--- Automatic Setup (Detect Packages & Bind Accounts) ---${C_RESET}"
     
-    # เช็คว่ามีข้อมูลเดิมอยู่หรือไม่
     if [ -s "$CONFIG_FILE" ]; then
         echo -e "${C_YELLOW}⚠️ พบข้อมูลหน้าจอและบัญชีที่เคยบันทึกไว้แล้ว!${C_RESET}"
         read -p "❓ ต้องการเคลียร์ข้อมูลและตั้งค่าใหม่หรือไม่? (y/n) [กด Enter เพื่อยกเลิก]: " confirm_reset
@@ -173,6 +180,7 @@ start_auto_setup() {
 # ระบบวาดตาราง Live Dashboard
 # ==========================================
 draw_dashboard() {
+    stty sane 2>/dev/null # ป้องกันหน้าจอพังก่อนวาดตารางทุกครั้ง
     clear
     show_header
     echo -e "${C_CYAN}--- 📊 Smart Watchdog Dashboard ---${C_RESET}"
@@ -202,20 +210,20 @@ relaunch_pkg() {
     colors[$idx]="$C_CYAN"
     draw_dashboard
     cache_path="/storage/emulated/0/Android/data/$p/cache"
-    if [ -d "$cache_path" ]; then su -c "rm -rf $cache_path/*" 2>/dev/null; fi
+    if [ -d "$cache_path" ]; then safe_su "rm -rf $cache_path/*"; fi
 
     statuses[$idx]="กำลังปิด (Kill)"
     colors[$idx]="$C_RED"
     draw_dashboard
     
-    su -c "am force-stop $p" > /dev/null 2>&1
-    su -c "am force-stop --user all $p" > /dev/null 2>&1
+    safe_su "am force-stop $p"
+    safe_su "am force-stop --user all $p"
     sleep 2
 
     statuses[$idx]="เปิดหน้าแรก"
     colors[$idx]="$C_GREEN"
     
-    su -c "monkey -p \"$p\" -c android.intent.category.LAUNCHER 1" > /dev/null 2>&1
+    safe_su "monkey -p \"$p\" -c android.intent.category.LAUNCHER 1"
     
     for (( w=5; w>0; w-- )); do
         statuses[$idx]="รอเข้าเกม ${w}s..."
@@ -226,18 +234,16 @@ relaunch_pkg() {
     statuses[$idx]="ส่งเข้าแมพ (Map)"
     draw_dashboard
     
-    su -c "am start -f 0x10000000 -a android.intent.action.VIEW -d \"roblox://placeId=$place_id\" -p \"$p\"" > /dev/null 2>&1
+    safe_su "am start -f 0x10000000 -a android.intent.action.VIEW -d \"roblox://placeId=$place_id\" -p \"$p\""
     
     launch_times[$idx]=$(date +%s)
     if [ -n "${ping_paths[$idx]}" ] && [ -f "${ping_paths[$idx]}" ]; then
-        su -c "rm \"${ping_paths[$idx]}\"" 2>/dev/null
+        safe_su "rm \"${ping_paths[$idx]}\""
     fi
     ping_paths[$idx]=""
     
     statuses[$idx]="กำลังโหลด (Loading)"
     colors[$idx]="$C_YELLOW"
-    
-    stty sane 2>/dev/null
 }
 
 # ==========================================
@@ -331,7 +337,7 @@ start_auto_rejoin() {
 # ==========================================
 # ดักจับ Ctrl+C เพื่อคืนค่า Cursor
 # ==========================================
-trap 'tput cnorm; clear; stty sane; exit' INT
+trap 'tput cnorm; clear; stty sane 2>/dev/null; exit' INT
 
 # ==========================================
 # เริ่มต้นการทำงาน 
@@ -355,7 +361,7 @@ while true; do
         1) start_auto_rejoin ;;
         2) start_auto_setup ;;
         3) setup_webhook ;;
-        0) clear; tput cnorm; stty sane; exit 0 ;;
+        0) clear; tput cnorm; stty sane 2>/dev/null; exit 0 ;;
         *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
     esac
 done
