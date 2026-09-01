@@ -21,13 +21,13 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}              TOOL v5.2${C_RESET}"
-    echo -e "${C_YELLOW}          Made by whatsupX${C_RESET}"
+    echo -e "${C_GREEN}       TOOL v6.0 (Smart Watchdog)      ${C_RESET}"
+    echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# เมนู 3: ระบบฝัง Lua Script
+# เมนู 3: ระบบฝัง Lua Script (อัปเดตระบบส่งชีพจร)
 # ==========================================
 setup_webhook() {
     clear
@@ -38,27 +38,35 @@ setup_webhook() {
     [[ -z "$webhook_url" ]] && return
 
     echo -e "${C_YELLOW}🔍 กำลังค้นหาโฟลเดอร์ Autoexec ทั้งหมดในเครื่อง...${C_RESET}"
-    autoexec_folders=$(find /storage/emulated/0 -maxdepth 3 -type d -iname "Autoexec" 2>/dev/null)
+    autoexec_folders=$(find /storage/emulated/0 -maxdepth 4 -type d -iname "Autoexec" 2>/dev/null)
 
     [[ -z "$autoexec_folders" ]] && return
 
     echo "$autoexec_folders" | while read -r folder; do
         lua_path="$folder/$LUA_FILENAME"
         [[ -f "$lua_path" ]] && rm "$lua_path"
+        
+        # ดึงชื่อโฟลเดอร์ (ซึ่งมักจะเป็นชื่อแพ็กเกจ เช่น roblox.clienv)
+        pkg_name=$(basename "$folder")
 
         cat <<EOF > "$lua_path"
-repeat wait() until game:IsLoaded()
+if not game:IsLoaded() then game.Loaded:Wait() end
+
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService")
 local player = Players.LocalPlayer
 local webhookUrl = "$webhook_url"
+local packageName = "$pkg_name"
 
-local playerName = player and player.Name or "กำลังโหลด..."
-local displayName = player and player.DisplayName or "กำลังโหลด..."
+local playerName = player and player.Name or "Unknown"
+local displayName = player and player.DisplayName or "Unknown"
 
+local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
+
+-- ฟังก์ชันส่งแจ้งเตือน
 local function sendWebhook(title, desc, colorHex)
-    if webhookUrl == "" or not request then return end
+    if webhookUrl == "" or not httpRequest then return end
     local data = {
         ["embeds"] = {{
             ["title"] = title,
@@ -66,28 +74,45 @@ local function sendWebhook(title, desc, colorHex)
             ["color"] = colorHex,
             ["fields"] = {
                 {["name"] = "👤 Username", ["value"] = playerName, ["inline"] = true},
-                {["name"] = "🏷️ Display Name", ["value"] = displayName, ["inline"] = true}
+                {["name"] = "📱 Package", ["value"] = packageName, ["inline"] = true}
             },
             ["footer"] = {["text"] = "TH REJOIN TOOL"}
         }}
     }
     pcall(function()
-        request({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(data)})
+        httpRequest({
+            Url = webhookUrl, Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(data)
+        })
     end)
 end
 
 sendWebhook("✅ เข้าร่วมเซิร์ฟเวอร์สำเร็จ!", "**JobId:** \`" .. tostring(game.JobId) .. "\`", 65280)
+
 GuiService.ErrorMessageChanged:Connect(function(errorMsg)
-    if errorMsg and errorMsg ~= "" then sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) end
+    if errorMsg and errorMsg ~= "" then 
+        sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) 
+    end
+end)
+
+-- ระบบส่งชีพจร (Heartbeat) ให้ Termux รู้ว่ายังไม่หลุด
+task.spawn(function()
+    while task.wait(20) do
+        pcall(function()
+            -- บันทึกไฟล์ชีพจรที่มี ชื่อตัวละคร|เวลาปัจจุบัน
+            writefile("ping_" .. packageName .. ".txt", playerName .. "|" .. tostring(os.time()))
+        end)
+    end
 end)
 EOF
-        echo -e "${C_GREEN}✔️ เพิ่มไฟล์ลงใน: $folder สำเร็จ${C_RESET}"
+        echo -e "${C_GREEN}✔️ เพิ่มไฟล์และระบบชีพจรลงใน: $folder สำเร็จ${C_RESET}"
     done
     read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
 }
 
 # ==========================================
-# เมนู 2: ระบบค้นหาจออัตโนมัติ (Auto Setup)
+# เมนู 2: ระบบค้นหาจออัตโนมัติ
 # ==========================================
 start_auto_setup() {
     clear
@@ -113,26 +138,71 @@ start_auto_setup() {
 draw_dashboard() {
     clear
     show_header
-    echo -e "${C_CYAN}--- 📊 Live Rejoin Dashboard ---${C_RESET}"
+    echo -e "${C_CYAN}--- 📊 Smart Watchdog Dashboard ---${C_RESET}"
     echo -e "▶️ สถานะระบบ: ${global_msg}"
-    echo "================================================================"
-    printf "| %-16s | %-16s | %-18s |\n" "📱 Package Name" "📌 Status" "ℹ️ Info"
-    echo "================================================================"
+    echo "================================================================="
+    printf "| %-16s | %-16s | %-20s |\n" "📱 Package" "👤 Account" "📌 Status"
+    echo "================================================================="
     
     for j in "${!pkgs[@]}"; do
         local pkg="${pkgs[$j]}"
+        local acc="${accounts[$j]}"
         local stat="${statuses[$j]}"
         local col="${colors[$j]}"
-        local info="${infos[$j]}"
-        printf "| %-16s | ${col}%-16s${C_RESET} | %-18s |\n" "$pkg" "$stat" "$info"
+        printf "| %-16s | %-16s | ${col}%-20s${C_RESET} |\n" "$pkg" "$acc" "$stat"
     done
     
-    echo "================================================================"
+    echo "================================================================="
     echo -e "${C_RED}[ กด Ctrl+C เพื่อหยุดการทำงาน ]${C_RESET}"
 }
 
 # ==========================================
-# เมนู 1: ระบบ Rejoin 
+# ฟังก์ชันเปิดจอเฉพาะแอปที่หลุด
+# ==========================================
+relaunch_pkg() {
+    local p="$1"
+    local idx="$2"
+    
+    statuses[$idx]="ล้างแคช..."
+    colors[$idx]="$C_CYAN"
+    draw_dashboard
+    cache_path="/storage/emulated/0/Android/data/$p/cache"
+    if [ -d "$cache_path" ]; then rm -rf "$cache_path"/* 2>/dev/null; fi
+
+    statuses[$idx]="กำลังปิด (Kill)"
+    colors[$idx]="$C_RED"
+    draw_dashboard
+    am start -a android.intent.action.MAIN -c android.intent.category.HOME > /dev/null 2>&1
+    sleep 1
+    am force-stop "$p" > /dev/null 2>&1
+    sleep 2
+
+    statuses[$idx]="เปิดหน้าแรก"
+    colors[$idx]="$C_GREEN"
+    monkey -p "$p" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
+    
+    for (( w=5; w>0; w-- )); do
+        statuses[$idx]="รอเข้าเกม ${w}s..."
+        draw_dashboard
+        sleep 1
+    done
+    
+    statuses[$idx]="ส่งเข้าแมพ (Map)"
+    draw_dashboard
+    am start -f 0x10000000 -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "$p" > /dev/null 2>&1
+    
+    # รีเซ็ตเวลาเริ่มต้น และลบไฟล์ชีพจรเก่าทิ้งป้องกันการอ่านข้อมูลเก่า
+    launch_times[$idx]=$(date +%s)
+    if [ -n "${ping_paths[$idx]}" ] && [ -f "${ping_paths[$idx]}" ]; then
+        rm "${ping_paths[$idx]}" 2>/dev/null
+    fi
+    
+    statuses[$idx]="กำลังโหลด (Loading)"
+    colors[$idx]="$C_YELLOW"
+}
+
+# ==========================================
+# เมนู 1: ระบบ Rejoin (Watchdog Loop)
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -147,10 +217,8 @@ start_auto_rejoin() {
     read -p "🎯 Enter Place ID: " place_id
     [[ -z "$place_id" ]] && return
 
-    read -p "⏱️ หน่วงเวลาก่อนเริ่ม Rejoin รอบใหม่ (เช่น 600 วินาที): " delay_time
-    [[ ! "$delay_time" =~ ^[0-9]+$ ]] && delay_time=600
-
-    read -p "⏳ หน่วงเวลาระหว่างเปิดแต่ละจอกี่วินาที? (แนะนำ 5-10): " delay_between
+    # หน่วงเวลาครั้งแรก
+    read -p "⏳ หน่วงเวลาระหว่างเปิดจอรอบแรกกี่วินาที? (แนะนำ 5-10): " delay_between
     [[ ! "$delay_between" =~ ^[0-9]+$ ]] && delay_between=7
 
     pkgs=()
@@ -158,75 +226,78 @@ start_auto_rejoin() {
     
     statuses=()
     colors=()
-    infos=()
+    accounts=()
+    ping_paths=()
+    launch_times=()
 
     tput civis 
 
+    # เปิดจอทั้งหมดรอบแรก
+    global_msg="${C_GREEN}🚀 กำลังรันเปิดจอทั้งหมดในรอบแรก...${C_RESET}"
+    for i in "${!pkgs[@]}"; do
+        accounts[$i]="กำลังโหลด..."
+        relaunch_pkg "${pkgs[$i]}" "$i"
+        sleep "$delay_between"
+    done
+
+    # ลูปเช็คสถานะทุกๆ 5 วินาที
     while true; do
+        global_msg="${C_CYAN}👀 ระบบ Watchdog กำลังตรวจสอบการตอบสนอง...${C_RESET}"
+        current_time=$(date +%s)
+
         for i in "${!pkgs[@]}"; do
-            statuses[$i]="รอคิว (Waiting)"
-            colors[$i]="$C_YELLOW"
-            infos[$i]="-"
+            pkg="${pkgs[$i]}"
+            
+            # 1. ค้นหาไฟล์ชีพจรของจอนี้ หากยังไม่เคยหาเจอ
+            if [ -z "${ping_paths[$i]}" ]; then
+                found_path=$(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${pkg}.txt" 2>/dev/null | head -n 1)
+                if [ -n "$found_path" ]; then
+                    ping_paths[$i]="$found_path"
+                fi
+            fi
+
+            # 2. ถ้าเจอไฟล์ชีพจร ให้อ่านข้อมูล
+            if [ -n "${ping_paths[$i]}" ] && [ -f "${ping_paths[$i]}" ]; then
+                content=$(cat "${ping_paths[$i]}" 2>/dev/null)
+                acc_name=$(echo "$content" | cut -d'|' -f1)
+                last_ping=$(echo "$content" | cut -d'|' -f2)
+                
+                # หากอ่านไฟล์ได้สำเร็จ
+                if [[ -n "$last_ping" && "$last_ping" =~ ^[0-9]+$ ]]; then
+                    diff=$((current_time - last_ping))
+                    accounts[$i]="$acc_name"
+
+                    if [ $diff -gt 60 ]; then
+                        # ถ้าเงียบไปเกิน 60 วิ แปลว่าหลุด/ค้าง -> สั่งเปิดใหม่!
+                        statuses[$i]="หลุด! (Dead > 60s)"
+                        colors[$i]="$C_RED"
+                        draw_dashboard
+                        relaunch_pkg "$pkg" "$i"
+                    else
+                        statuses[$i]="ออนไลน์ (${diff}s ก่อน)"
+                        colors[$i]="$C_GREEN"
+                    fi
+                fi
+            else
+                # 3. ถ้ายังไม่เจอไฟล์ชีพจร เช็คว่าโหลดเกมนานเกินไปไหม
+                launched_at=${launch_times[$i]:-0}
+                wait_time=$((current_time - launched_at))
+                
+                if [ $wait_time -gt 150 ]; then 
+                    # ให้เวลาเข้าเกม 2 นาทีครึ่ง ถ้าสคริปต์ยังไม่ทำงาน แปลว่าหลุดตั้งแต่หน้าโหลด
+                    statuses[$i]="จอค้าง! (Timeout)"
+                    colors[$i]="$C_RED"
+                    draw_dashboard
+                    relaunch_pkg "$pkg" "$i"
+                else
+                    statuses[$i]="รอสคริปต์ทำงาน (${wait_time}s)"
+                    colors[$i]="$C_YELLOW"
+                fi
+            fi
         done
         
-        global_msg="${C_CYAN}🧹 กำลังเคลียร์แคชไฟล์ขยะ...${C_RESET}"
-        
-        for i in "${!pkgs[@]}"; do
-            statuses[$i]="ล้างแคช (Cache)"
-            colors[$i]="$C_CYAN"
-            infos[$i]="ลบไฟล์ขยะ..."
-            draw_dashboard
-            
-            cache_path="/storage/emulated/0/Android/data/${pkgs[$i]}/cache"
-            if [ -d "$cache_path" ]; then rm -rf "$cache_path"/* 2>/dev/null; fi
-        done
-
-        global_msg="${C_GREEN}🚀 กำลังรันระบบเปิดจอ...${C_RESET}"
-
-        for i in "${!pkgs[@]}"; do
-            statuses[$i]="กำลังปิด (Kill)"
-            colors[$i]="$C_RED"
-            infos[$i]="Force Stop"
-            draw_dashboard
-            
-            am force-stop "${pkgs[$i]}" > /dev/null 2>&1
-            sleep 2
-            
-            statuses[$i]="เปิดหน้าแรก"
-            colors[$i]="$C_GREEN"
-            monkey -p "${pkgs[$i]}" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
-            
-            # เพิ่มเวลาจาก 3 เป็น 5 วินาที เพื่อให้เกมโหลดหน้าแรกเสร็จก่อนรับคำสั่ง
-            for (( w=5; w>0; w-- )); do
-                infos[$i]="รอเข้าเกม ${w}s..."
-                draw_dashboard
-                sleep 1
-            done
-            
-            statuses[$i]="ส่งเข้าแมพ (Map)"
-            infos[$i]="Place ID"
-            draw_dashboard
-            
-            # เพิ่ม -f 0x10000000 (FLAG_ACTIVITY_NEW_TASK) บังคับให้ดึงเข้าแมพทันที
-            am start -f 0x10000000 -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "${pkgs[$i]}" > /dev/null 2>&1
-            
-            statuses[$i]="รันปกติ (Running)"
-            colors[$i]="$C_PURPLE"
-            
-            for (( w=$delay_between; w>0; w-- )); do
-                infos[$i]="พักเครื่อง ${w}s..."
-                draw_dashboard
-                sleep 1
-            done
-            infos[$i]="- ปกติ -"
-            draw_dashboard
-        done
-
-        for (( w=$delay_time; w>0; w-- )); do
-            global_msg="รอรอบถัดไปใน: ${C_YELLOW}${w} วินาที${C_RESET}"
-            draw_dashboard
-            sleep 1
-        done
+        draw_dashboard
+        sleep 5
     done
     
     tput cnorm 
@@ -244,9 +315,9 @@ while true; do
     clear
     show_header
     echo -e "${C_CYAN}Available Features:${C_RESET}"
-    echo -e "${C_CYAN}1.${C_RESET} Start Auto Rejoin (Live Dashboard)"
+    echo -e "${C_CYAN}1.${C_RESET} Start Auto Rejoin (Smart Watchdog)"
     echo -e "${C_CYAN}2.${C_RESET} Start Auto Setup (Detect Packages)"
-    echo -e "${C_CYAN}3.${C_RESET} Add Discord Webhook to Autoexec"
+    echo -e "${C_CYAN}3.${C_RESET} Add Discord Webhook & Heartbeat to Autoexec"
     echo -e "${C_CYAN}0.${C_RESET} Exit"
     echo ""
     read -p "Select an option: " opt_main
