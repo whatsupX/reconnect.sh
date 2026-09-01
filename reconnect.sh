@@ -13,14 +13,16 @@ CONFIG_FILE="roblox_accounts.cfg"
 LUA_FILENAME="status_check.lua"
 
 # ==========================================
-# ฟังก์ชันแสดงส่วนหัว
+# ฟังก์ชันแสดงส่วนหัว (โลโก้ใหม่)
 # ==========================================
 show_header() {
-    echo -e "${C_CYAN} _ __ ___  ___ ___  _ __  _ __   ___  ___| |_${C_RESET}"
-    echo -e "${C_CYAN}| '__/ _ \/ __/ _ \| '_ \| '_ \ / _ \/ __| __|${C_RESET}"
-    echo -e "${C_CYAN}| | |  __/ (_| (_) | | | | | | |  __/ (__| |_${C_RESET}"
-    echo -e "${C_CYAN}|_|  \___|\___\___/|_| |_|_| |_|\___|\___|\__|${C_RESET}"
-    echo "              Made for Multi-Account v4.3"
+    echo -e "${C_CYAN}  _____ _  _   ___ ___ _  ___ ___ _  _ ${C_RESET}"
+    echo -e "${C_CYAN} |_   _| || | | _ \ __| |/ _ \_ _| \| |${C_RESET}"
+    echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
+    echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
+    echo -e "${C_CYAN}                     |__/              ${C_RESET}"
+    echo -e "${C_GREEN}              TOOL v5.0${C_RESET}"
+    echo -e "${C_YELLOW}          Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -66,7 +68,7 @@ local function sendWebhook(title, desc, colorHex)
                 {["name"] = "👤 Username", ["value"] = playerName, ["inline"] = true},
                 {["name"] = "🏷️ Display Name", ["value"] = displayName, ["inline"] = true}
             },
-            ["footer"] = {["text"] = "Auto Rejoin System"}
+            ["footer"] = {["text"] = "TH REJOIN TOOL"}
         }}
     }
     pcall(function()
@@ -187,12 +189,10 @@ start_auto_rejoin() {
             infos[$i]="Force Stop"
             draw_dashboard
             
-            # --- แก้ไขระบบ Kill ให้เคลียร์จอ ---
-            input keyevent 3  # กดปุ่ม Home เพื่อพับหน้าจอลงไปก่อน
+            am start -a android.intent.action.MAIN -c android.intent.category.HOME > /dev/null 2>&1
             sleep 1
             am force-stop "${pkgs[$i]}" > /dev/null 2>&1
             sleep 2
-            # --------------------------------
             
             statuses[$i]="เปิดหน้าแรก"
             colors[$i]="$C_GREEN"
