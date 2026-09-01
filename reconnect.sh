@@ -21,25 +21,19 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}       TOOL v6.2 (Smart Watchdog)      ${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v6.3 (Shared Folder Fix)      ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# เมนู 3: ระบบฝัง Lua Script (จับคู่แพ็กเกจ)
+# เมนู 3: ระบบฝัง Lua Script (แบบครอบจักรวาล)
 # ==========================================
 setup_webhook() {
     clear
     show_header
     echo -e "${C_CYAN}--- Setup Discord Webhook & Autoexec ---${C_RESET}"
     
-    if [ ! -f "$CONFIG_FILE" ] || [ ! -s "$CONFIG_FILE" ]; then
-        echo -e "${C_RED}❌ ไม่พบข้อมูลจอ! กรุณาไปทำ Auto Setup (เมนู 2) ก่อน${C_RESET}"
-        sleep 3
-        return
-    fi
-
     read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook: " webhook_url
     [[ -z "$webhook_url" ]] && return
 
@@ -52,33 +46,12 @@ setup_webhook() {
         return
     fi
 
-    # ดึงรายชื่อจอมาทำเป็นตัวเลือก
-    pkgs=()
-    while IFS= read -r line; do [[ -n "$line" ]] && pkgs+=("$line"); done < "$CONFIG_FILE"
-
-    # วนลูปถามทีละโฟลเดอร์
-    OLD_IFS="$IFS"
-    IFS=$'\n'
-    for folder in $autoexec_folders; do
-        [[ -z "$folder" ]] && continue
-        echo -e "${C_CYAN}------------------------------------------------${C_RESET}"
-        echo -e "${C_YELLOW}📂 พบโฟลเดอร์: ${folder}${C_RESET}"
-        echo -e "❓ โฟลเดอร์นี้เป็นของแอพจอไหน?"
-        for i in "${!pkgs[@]}"; do
-            echo "   $((i+1)). ${pkgs[$i]}"
-        done
-        echo "   0. ข้ามโฟลเดอร์นี้ / ไม่ใช่ของ Roblox"
+    echo "$autoexec_folders" | while read -r folder; do
+        lua_path="$folder/$LUA_FILENAME"
+        [[ -f "$lua_path" ]] && rm "$lua_path"
         
-        read -p "👉 เลือกหมายเลข (0-${#pkgs[@]}): " sel
-        
-        if [[ "$sel" =~ ^[1-9]+$ ]] && [ "$sel" -le "${#pkgs[@]}" ]; then
-            idx=$((sel-1))
-            pkg_name="${pkgs[$idx]}"
-            
-            lua_path="$folder/$LUA_FILENAME"
-            [[ -f "$lua_path" ]] && rm "$lua_path"
-
-            cat <<EOF > "$lua_path"
+        # สคริปต์ Lua จะเขียนไฟล์ชีพจรโดยใช้ Username ของจอนั้นๆ โดยตรง
+        cat <<EOF > "$lua_path"
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -86,7 +59,6 @@ local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService")
 local player = Players.LocalPlayer
 local webhookUrl = "$webhook_url"
-local packageName = "$pkg_name"
 
 local playerName = player and player.Name or "Unknown"
 local displayName = player and player.DisplayName or "Unknown"
@@ -102,7 +74,7 @@ local function sendWebhook(title, desc, colorHex)
             ["color"] = colorHex,
             ["fields"] = {
                 {["name"] = "👤 Username", ["value"] = playerName, ["inline"] = true},
-                {["name"] = "📱 Package", ["value"] = packageName, ["inline"] = true}
+                {["name"] = "🏷️ Display Name", ["value"] = displayName, ["inline"] = true}
             },
             ["footer"] = {["text"] = "TH REJOIN TOOL"}
         }}
@@ -121,36 +93,41 @@ end)
 task.spawn(function()
     while task.wait(10) do
         pcall(function()
-            writefile("ping_" .. packageName .. ".txt", playerName .. "|" .. tostring(os.time()))
+            writefile("ping_" .. playerName .. ".txt", tostring(os.time()))
         end)
     end
 end)
 EOF
-            echo -e "${C_GREEN}✔️ ผูกไฟล์กับ $pkg_name สำเร็จ${C_RESET}"
-        else
-            echo -e "${C_RED}⏭️ ข้ามการติดตั้งโฟลเดอร์นี้${C_RESET}"
-        fi
+        echo -e "${C_GREEN}✔️ เพิ่มไฟล์ระบบชีฟจรแบบ Universal ลงใน: $folder สำเร็จ${C_RESET}"
     done
-    IFS="$OLD_IFS"
     
     echo ""
     read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
 }
 
 # ==========================================
-# เมนู 2: ระบบค้นหาจออัตโนมัติ
+# เมนู 2: ระบบค้นหาจออัตโนมัติ (เพิ่มการผูก Username)
 # ==========================================
 start_auto_setup() {
     clear
     show_header
-    echo -e "${C_CYAN}--- Automatic Setup (Detect Packages) ---${C_RESET}"
+    echo -e "${C_CYAN}--- Automatic Setup (Detect Packages & Bind Accounts) ---${C_RESET}"
     echo -e "${C_YELLOW}🔄 ระบบกำลังค้นหาแพ็กเกจโคลนทั้งหมด...${C_RESET}"
     
-    pm list packages | grep "roblox.clien" | cut -f 2 -d ':' > "$CONFIG_FILE"
-    screen_count=$(wc -l < "$CONFIG_FILE")
+    pm list packages | grep "roblox.clien" | cut -f 2 -d ':' > "temp_pkg.txt"
+    screen_count=$(wc -l < "temp_pkg.txt")
 
     if [ "$screen_count" -gt 0 ]; then
-        echo -e "${C_GREEN}✅ ตรวจพบและบันทึกอัตโนมัติจำนวน $screen_count จอ${C_RESET}"
+        echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
+        echo -e "${C_YELLOW}⚠️ เพื่อให้ Watchdog ทำงานได้ กรุณาใส่ Username (ชื่อตัวละคร ไม่ใช่ชื่อเล่น) ให้ตรงกับแต่ละจอ${C_RESET}"
+        > "$CONFIG_FILE"
+        while read -r pkg; do
+            read -p "👤 ใส่ Username ของจอ [$pkg]: " uname
+            [[ -z "$uname" ]] && uname="Unknown"
+            echo "$pkg|$uname" >> "$CONFIG_FILE"
+        done < "temp_pkg.txt"
+        rm "temp_pkg.txt"
+        echo -e "${C_GREEN}🎉 บันทึกข้อมูลและผูกบัญชีสำเร็จ!${C_RESET}"
         sleep 2
     else
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจโคลนที่ขึ้นต้นด้วย 'roblox.clien'${C_RESET}"
@@ -172,7 +149,7 @@ draw_dashboard() {
     
     for j in "${!pkgs[@]}"; do
         local pkg="${pkgs[$j]}"
-        local acc="${accounts[$j]}"
+        local acc="${unames[$j]}"
         local stat="${statuses[$j]}"
         local col="${colors[$j]}"
         printf "| %-16s | %-16s | ${col}%-20s${C_RESET} |\n" "$pkg" "$acc" "$stat"
@@ -245,11 +222,16 @@ start_auto_rejoin() {
     [[ ! "$delay_between" =~ ^[0-9]+$ ]] && delay_between=7
 
     pkgs=()
-    while IFS= read -r line; do [[ -n "$line" ]] && pkgs+=("$line"); done < "$CONFIG_FILE"
+    unames=()
+    while IFS='|' read -r pkg uname; do 
+        if [[ -n "$pkg" && -n "$uname" ]]; then
+            pkgs+=("$pkg")
+            unames+=("$uname")
+        fi
+    done < "$CONFIG_FILE"
     
     statuses=()
     colors=()
-    accounts=()
     ping_paths=()
     launch_times=()
 
@@ -257,7 +239,6 @@ start_auto_rejoin() {
 
     global_msg="${C_GREEN}🚀 กำลังรันเปิดจอทั้งหมดในรอบแรก...${C_RESET}"
     for i in "${!pkgs[@]}"; do
-        accounts[$i]="กำลังโหลด..."
         relaunch_pkg "${pkgs[$i]}" "$i"
         sleep "$delay_between"
     done
@@ -268,23 +249,21 @@ start_auto_rejoin() {
 
         for i in "${!pkgs[@]}"; do
             pkg="${pkgs[$i]}"
+            uname="${unames[$i]}"
             
-            # ค้นหาไฟล์หากยังไม่เคยเจอ
+            # ค้นหาไฟล์ชีพจรด้วย "ชื่อ Username" ของจอนั้น
             if [ -z "${ping_paths[$i]}" ] || [ ! -f "${ping_paths[$i]}" ]; then
-                found_path=$(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${pkg}.txt" 2>/dev/null | head -n 1)
+                found_path=$(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${uname}.txt" 2>/dev/null | head -n 1)
                 if [ -n "$found_path" ]; then
                     ping_paths[$i]="$found_path"
                 fi
             fi
 
             if [ -n "${ping_paths[$i]}" ] && [ -f "${ping_paths[$i]}" ]; then
-                content=$(cat "${ping_paths[$i]}" 2>/dev/null)
-                acc_name=$(echo "$content" | cut -d'|' -f1)
-                last_ping=$(echo "$content" | cut -d'|' -f2)
+                last_ping=$(cat "${ping_paths[$i]}" 2>/dev/null)
                 
-                if [[ -n "$last_ping" && "$last_ping" =~ ^[0-9]+$ ]]; then
+                if [[ "$last_ping" =~ ^[0-9]+$ ]]; then
                     diff=$((current_time - last_ping))
-                    accounts[$i]="$acc_name"
 
                     if [ $diff -gt 60 ]; then
                         statuses[$i]="หลุด! (Dead > 60s)"
@@ -332,7 +311,7 @@ while true; do
     show_header
     echo -e "${C_CYAN}Available Features:${C_RESET}"
     echo -e "${C_CYAN}1.${C_RESET} Start Auto Rejoin (Smart Watchdog)"
-    echo -e "${C_CYAN}2.${C_RESET} Start Auto Setup (Detect Packages)"
+    echo -e "${C_CYAN}2.${C_RESET} Start Auto Setup (Detect Packages & Bind Accounts)"
     echo -e "${C_CYAN}3.${C_RESET} Add Discord Webhook & Heartbeat to Autoexec"
     echo -e "${C_CYAN}0.${C_RESET} Exit"
     echo ""
