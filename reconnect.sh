@@ -21,7 +21,7 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}              TOOL v5.1${C_RESET}"
+    echo -e "${C_GREEN}              TOOL v5.2${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX${C_RESET}"
     echo ""
 }
@@ -189,7 +189,6 @@ start_auto_rejoin() {
             infos[$i]="Force Stop"
             draw_dashboard
             
-            # ลบคำสั่งกลับหน้า Home ออก ให้ Kill เฉพาะแอปเป้าหมายตรงๆ
             am force-stop "${pkgs[$i]}" > /dev/null 2>&1
             sleep 2
             
@@ -197,7 +196,8 @@ start_auto_rejoin() {
             colors[$i]="$C_GREEN"
             monkey -p "${pkgs[$i]}" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
             
-            for (( w=3; w>0; w-- )); do
+            # เพิ่มเวลาจาก 3 เป็น 5 วินาที เพื่อให้เกมโหลดหน้าแรกเสร็จก่อนรับคำสั่ง
+            for (( w=5; w>0; w-- )); do
                 infos[$i]="รอเข้าเกม ${w}s..."
                 draw_dashboard
                 sleep 1
@@ -206,7 +206,9 @@ start_auto_rejoin() {
             statuses[$i]="ส่งเข้าแมพ (Map)"
             infos[$i]="Place ID"
             draw_dashboard
-            am start -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "${pkgs[$i]}" > /dev/null 2>&1
+            
+            # เพิ่ม -f 0x10000000 (FLAG_ACTIVITY_NEW_TASK) บังคับให้ดึงเข้าแมพทันที
+            am start -f 0x10000000 -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "${pkgs[$i]}" > /dev/null 2>&1
             
             statuses[$i]="รันปกติ (Running)"
             colors[$i]="$C_PURPLE"
