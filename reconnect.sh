@@ -21,7 +21,7 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v6.3 (Shared Folder Fix)      ${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v6.4 (Shared Folder Fix)      ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
 }
@@ -50,7 +50,6 @@ setup_webhook() {
         lua_path="$folder/$LUA_FILENAME"
         [[ -f "$lua_path" ]] && rm "$lua_path"
         
-        # สคริปต์ Lua จะเขียนไฟล์ชีพจรโดยใช้ Username ของจอนั้นๆ โดยตรง
         cat <<EOF > "$lua_path"
 if not game:IsLoaded() then game.Loaded:Wait() end
 
@@ -98,7 +97,7 @@ task.spawn(function()
     end
 end)
 EOF
-        echo -e "${C_GREEN}✔️ เพิ่มไฟล์ระบบชีฟจรแบบ Universal ลงใน: $folder สำเร็จ${C_RESET}"
+        echo -e "${C_GREEN}✔️ เพิ่มไฟล์ระบบชีพจรแบบ Universal ลงใน: $folder สำเร็จ${C_RESET}"
     done
     
     echo ""
@@ -106,7 +105,7 @@ EOF
 }
 
 # ==========================================
-# เมนู 2: ระบบค้นหาจออัตโนมัติ (เพิ่มการผูก Username)
+# เมนู 2: ระบบค้นหาจออัตโนมัติ (แก้ไขบั๊กการพิมพ์แล้ว)
 # ==========================================
 start_auto_setup() {
     clear
@@ -120,12 +119,19 @@ start_auto_setup() {
     if [ "$screen_count" -gt 0 ]; then
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
         echo -e "${C_YELLOW}⚠️ เพื่อให้ Watchdog ทำงานได้ กรุณาใส่ Username (ชื่อตัวละคร ไม่ใช่ชื่อเล่น) ให้ตรงกับแต่ละจอ${C_RESET}"
+        
+        # ดึงรายชื่อจอมาเก็บไว้ใน Array ก่อน เพื่อไม่ให้บั๊กกับคำสั่งรับค่าจากคีย์บอร์ด
+        local found_pkgs=()
+        while IFS= read -r line; do [[ -n "$line" ]] && found_pkgs+=("$line"); done < "temp_pkg.txt"
+        
         > "$CONFIG_FILE"
-        while read -r pkg; do
+        # วนลูปถามทีละจอ
+        for pkg in "${found_pkgs[@]}"; do
             read -p "👤 ใส่ Username ของจอ [$pkg]: " uname
             [[ -z "$uname" ]] && uname="Unknown"
             echo "$pkg|$uname" >> "$CONFIG_FILE"
-        done < "temp_pkg.txt"
+        done
+        
         rm "temp_pkg.txt"
         echo -e "${C_GREEN}🎉 บันทึกข้อมูลและผูกบัญชีสำเร็จ!${C_RESET}"
         sleep 2
@@ -251,7 +257,6 @@ start_auto_rejoin() {
             pkg="${pkgs[$i]}"
             uname="${unames[$i]}"
             
-            # ค้นหาไฟล์ชีพจรด้วย "ชื่อ Username" ของจอนั้น
             if [ -z "${ping_paths[$i]}" ] || [ ! -f "${ping_paths[$i]}" ]; then
                 found_path=$(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${uname}.txt" 2>/dev/null | head -n 1)
                 if [ -n "$found_path" ]; then
