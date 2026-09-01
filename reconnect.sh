@@ -21,34 +21,64 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}       TOOL v6.1 (Smart Watchdog)      ${C_RESET}"
+    echo -e "${C_GREEN}       TOOL v6.2 (Smart Watchdog)      ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# เมนู 3: ระบบฝัง Lua Script (ระบบส่งชีพจร)
+# เมนู 3: ระบบฝัง Lua Script (จับคู่แพ็กเกจ)
 # ==========================================
 setup_webhook() {
     clear
     show_header
     echo -e "${C_CYAN}--- Setup Discord Webhook & Autoexec ---${C_RESET}"
-    read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook: " webhook_url
     
+    if [ ! -f "$CONFIG_FILE" ] || [ ! -s "$CONFIG_FILE" ]; then
+        echo -e "${C_RED}❌ ไม่พบข้อมูลจอ! กรุณาไปทำ Auto Setup (เมนู 2) ก่อน${C_RESET}"
+        sleep 3
+        return
+    fi
+
+    read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook: " webhook_url
     [[ -z "$webhook_url" ]] && return
 
     echo -e "${C_YELLOW}🔍 กำลังค้นหาโฟลเดอร์ Autoexec ทั้งหมดในเครื่อง...${C_RESET}"
     autoexec_folders=$(find /storage/emulated/0 -maxdepth 4 -type d -iname "Autoexec" 2>/dev/null)
 
-    [[ -z "$autoexec_folders" ]] && return
+    if [ -z "$autoexec_folders" ]; then
+        echo -e "${C_RED}❌ ไม่พบโฟลเดอร์ Autoexec ในเครื่อง${C_RESET}"
+        sleep 3
+        return
+    fi
 
-    echo "$autoexec_folders" | while read -r folder; do
-        lua_path="$folder/$LUA_FILENAME"
-        [[ -f "$lua_path" ]] && rm "$lua_path"
+    # ดึงรายชื่อจอมาทำเป็นตัวเลือก
+    pkgs=()
+    while IFS= read -r line; do [[ -n "$line" ]] && pkgs+=("$line"); done < "$CONFIG_FILE"
+
+    # วนลูปถามทีละโฟลเดอร์
+    OLD_IFS="$IFS"
+    IFS=$'\n'
+    for folder in $autoexec_folders; do
+        [[ -z "$folder" ]] && continue
+        echo -e "${C_CYAN}------------------------------------------------${C_RESET}"
+        echo -e "${C_YELLOW}📂 พบโฟลเดอร์: ${folder}${C_RESET}"
+        echo -e "❓ โฟลเดอร์นี้เป็นของแอพจอไหน?"
+        for i in "${!pkgs[@]}"; do
+            echo "   $((i+1)). ${pkgs[$i]}"
+        done
+        echo "   0. ข้ามโฟลเดอร์นี้ / ไม่ใช่ของ Roblox"
         
-        pkg_name=$(basename "$folder")
+        read -p "👉 เลือกหมายเลข (0-${#pkgs[@]}): " sel
+        
+        if [[ "$sel" =~ ^[1-9]+$ ]] && [ "$sel" -le "${#pkgs[@]}" ]; then
+            idx=$((sel-1))
+            pkg_name="${pkgs[$idx]}"
+            
+            lua_path="$folder/$LUA_FILENAME"
+            [[ -f "$lua_path" ]] && rm "$lua_path"
 
-        cat <<EOF > "$lua_path"
+            cat <<EOF > "$lua_path"
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -78,32 +108,32 @@ local function sendWebhook(title, desc, colorHex)
         }}
     }
     pcall(function()
-        httpRequest({
-            Url = webhookUrl, Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode(data)
-        })
+        httpRequest({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(data)})
     end)
 end
 
 sendWebhook("✅ เข้าร่วมเซิร์ฟเวอร์สำเร็จ!", "**JobId:** \`" .. tostring(game.JobId) .. "\`", 65280)
 
 GuiService.ErrorMessageChanged:Connect(function(errorMsg)
-    if errorMsg and errorMsg ~= "" then 
-        sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) 
-    end
+    if errorMsg and errorMsg ~= "" then sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) end
 end)
 
 task.spawn(function()
-    while task.wait(20) do
+    while task.wait(10) do
         pcall(function()
             writefile("ping_" .. packageName .. ".txt", playerName .. "|" .. tostring(os.time()))
         end)
     end
 end)
 EOF
-        echo -e "${C_GREEN}✔️ เพิ่มไฟล์และระบบชีพจรลงใน: $folder สำเร็จ${C_RESET}"
+            echo -e "${C_GREEN}✔️ ผูกไฟล์กับ $pkg_name สำเร็จ${C_RESET}"
+        else
+            echo -e "${C_RED}⏭️ ข้ามการติดตั้งโฟลเดอร์นี้${C_RESET}"
+        fi
     done
+    IFS="$OLD_IFS"
+    
+    echo ""
     read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
 }
 
@@ -169,7 +199,6 @@ relaunch_pkg() {
     colors[$idx]="$C_RED"
     draw_dashboard
     
-    # ถอดคำสั่ง Home ออก ป้องกัน Termux เด้งพับหน้าจอ
     am force-stop "$p" > /dev/null 2>&1
     sleep 2
 
@@ -240,7 +269,8 @@ start_auto_rejoin() {
         for i in "${!pkgs[@]}"; do
             pkg="${pkgs[$i]}"
             
-            if [ -z "${ping_paths[$i]}" ]; then
+            # ค้นหาไฟล์หากยังไม่เคยเจอ
+            if [ -z "${ping_paths[$i]}" ] || [ ! -f "${ping_paths[$i]}" ]; then
                 found_path=$(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${pkg}.txt" 2>/dev/null | head -n 1)
                 if [ -n "$found_path" ]; then
                     ping_paths[$i]="$found_path"
