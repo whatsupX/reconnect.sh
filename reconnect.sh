@@ -21,7 +21,7 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v6.4 (Shared Folder Fix)      ${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v6.5 (Force Clear Task)       ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
 }
@@ -105,7 +105,7 @@ EOF
 }
 
 # ==========================================
-# เมนู 2: ระบบค้นหาจออัตโนมัติ (แก้ไขบั๊กการพิมพ์แล้ว)
+# เมนู 2: ระบบค้นหาจออัตโนมัติ (ผูก Username)
 # ==========================================
 start_auto_setup() {
     clear
@@ -120,12 +120,10 @@ start_auto_setup() {
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
         echo -e "${C_YELLOW}⚠️ เพื่อให้ Watchdog ทำงานได้ กรุณาใส่ Username (ชื่อตัวละคร ไม่ใช่ชื่อเล่น) ให้ตรงกับแต่ละจอ${C_RESET}"
         
-        # ดึงรายชื่อจอมาเก็บไว้ใน Array ก่อน เพื่อไม่ให้บั๊กกับคำสั่งรับค่าจากคีย์บอร์ด
         local found_pkgs=()
         while IFS= read -r line; do [[ -n "$line" ]] && found_pkgs+=("$line"); done < "temp_pkg.txt"
         
         > "$CONFIG_FILE"
-        # วนลูปถามทีละจอ
         for pkg in "${found_pkgs[@]}"; do
             read -p "👤 ใส่ Username ของจอ [$pkg]: " uname
             [[ -z "$uname" ]] && uname="Unknown"
@@ -166,7 +164,7 @@ draw_dashboard() {
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอเฉพาะแอปที่หลุด
+# ฟังก์ชันเปิดจอเฉพาะแอปที่หลุด (อัปเกรดล้าง Task)
 # ==========================================
 relaunch_pkg() {
     local p="$1"
@@ -182,6 +180,7 @@ relaunch_pkg() {
     colors[$idx]="$C_RED"
     draw_dashboard
     
+    # คำสั่งพื้นฐาน
     am force-stop "$p" > /dev/null 2>&1
     sleep 2
 
@@ -197,7 +196,9 @@ relaunch_pkg() {
     
     statuses[$idx]="ส่งเข้าแมพ (Map)"
     draw_dashboard
-    am start -f 0x10000000 -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "$p" > /dev/null 2>&1
+    
+    # [จุดสำคัญ]: เพิ่ม -S (Force stop อีกรอบให้ชัวร์) และ -f 0x10008000 (สั่งระเบิดประวัติจอเก่าที่พับค้างไว้ทิ้งทั้งหมด)
+    am start -S -f 0x10008000 -a android.intent.action.VIEW -d "roblox://placeId=$place_id" -p "$p" > /dev/null 2>&1
     
     launch_times[$idx]=$(date +%s)
     if [ -n "${ping_paths[$idx]}" ] && [ -f "${ping_paths[$idx]}" ]; then
