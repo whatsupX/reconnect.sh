@@ -21,7 +21,7 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v7.2 (Anti-Staircase UI)      ${C_RESET}"
+    echo -e "${C_GREEN}              TOOL v7.3                ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
 }
@@ -149,7 +149,7 @@ start_auto_setup() {
 
     if [ "$screen_count" -gt 0 ]; then
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
-        echo -e "${C_YELLOW}⚠️ เพื่อให้ Watchdog ทำงานได้ กรุณาใส่ Username ให้ตรงกับแต่ละจอ${C_RESET}"
+        echo -e "${C_YELLOW}⚠️ เพื่อให้ระบบ Rejoin ทำงานได้ กรุณาใส่ Username ให้ตรงกับแต่ละจอ${C_RESET}"
         echo ""
         
         local found_pkgs=()
@@ -180,10 +180,10 @@ start_auto_setup() {
 # ระบบวาดตาราง Live Dashboard
 # ==========================================
 draw_dashboard() {
-    stty sane 2>/dev/null # ป้องกันหน้าจอพังก่อนวาดตารางทุกครั้ง
+    stty sane 2>/dev/null 
     clear
     show_header
-    echo -e "${C_CYAN}--- 📊 Smart Watchdog Dashboard ---${C_RESET}"
+    echo -e "${C_CYAN}--- 📊 Smart Rejoin Dashboard ---${C_RESET}"
     echo -e "▶️ สถานะระบบ: ${global_msg}"
     echo "================================================================="
     printf "| %-16s | %-16s | %-20s |\n" "📱 Package" "👤 Account" "📌 Status"
@@ -247,7 +247,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: ระบบ Rejoin (Watchdog Loop)
+# เมนู 1: ระบบ Rejoin Loop
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -288,7 +288,7 @@ start_auto_rejoin() {
     done
 
     while true; do
-        global_msg="${C_CYAN}👀 ระบบ Watchdog กำลังตรวจสอบการตอบสนอง...${C_RESET}"
+        global_msg="${C_CYAN}👀 ระบบ Rejoin กำลังตรวจสอบการตอบสนอง...${C_RESET}"
         current_time=$(date +%s)
 
         for i in "${!pkgs[@]}"; do
@@ -351,7 +351,7 @@ while true; do
     clear
     show_header
     echo -e "${C_CYAN}Available Features:${C_RESET}"
-    echo -e "${C_CYAN}1.${C_RESET} Start Auto Rejoin (Smart Watchdog)"
+    echo -e "${C_CYAN}1.${C_RESET} Start Auto Rejoin (Smart System)"
     echo -e "${C_CYAN}2.${C_RESET} Start Auto Setup (Detect Packages & Bind Accounts)"
     echo -e "${C_CYAN}3.${C_RESET} Add Discord Webhook & Heartbeat to Autoexec"
     echo -e "${C_CYAN}0.${C_RESET} Exit"
