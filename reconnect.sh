@@ -21,13 +21,13 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
     echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}              TOOL v7.3                ${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v7.4 (Instant Disconnect)     ${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# ฟังก์ชันรันคำสั่ง Root แบบปลอดภัย (ไม่พังหน้าจอ)
+# ฟังก์ชันรันคำสั่ง Root แบบปลอดภัย
 # ==========================================
 safe_su() {
     su -c "$1" > /dev/null 2>&1
@@ -55,7 +55,7 @@ check_root() {
 }
 
 # ==========================================
-# เมนู 3: ระบบฝัง Lua Script
+# เมนู 3: ระบบฝัง Lua Script (เพิ่มระบบตรวจจับ Error ด่วน)
 # ==========================================
 setup_webhook() {
     clear
@@ -89,6 +89,7 @@ local webhookUrl = "$webhook_url"
 local playerName = player and player.Name or "Unknown"
 local displayName = player and player.DisplayName or "Unknown"
 local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
+local isDisconnected = false
 
 local function sendWebhook(title, desc, colorHex)
     if webhookUrl == "" or not httpRequest then return end
@@ -106,17 +107,24 @@ local function sendWebhook(title, desc, colorHex)
 end
 
 sendWebhook("✅ เข้าร่วมเซิร์ฟเวอร์สำเร็จ!", "**JobId:** \`" .. tostring(game.JobId) .. "\`", 65280)
+
+-- ดักจับตอนเกมแจ้งเตือนหลุด
 GuiService.ErrorMessageChanged:Connect(function(errorMsg)
-    if errorMsg and errorMsg ~= "" then sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) end
+    if errorMsg and errorMsg ~= "" then 
+        isDisconnected = true
+        pcall(function() writefile("ping_" .. playerName .. ".txt", "DEAD") end)
+        sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) 
+    end
 end)
 
 task.spawn(function()
     while task.wait(10) do
+        if isDisconnected then break end
         pcall(function() writefile("ping_" .. playerName .. ".txt", tostring(os.time())) end)
     end
 end)
 EOF
-        echo -e "${C_GREEN}✔️ เพิ่มไฟล์ระบบชีพจรลงใน: $folder สำเร็จ${C_RESET}"
+        echo -e "${C_GREEN}✔️ เพิ่มไฟล์ระบบตรวจจับหลุดฉับพลันลงใน: $folder สำเร็จ${C_RESET}"
     done
     echo ""
     read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
@@ -302,7 +310,14 @@ start_auto_rejoin() {
 
             if [ -n "${ping_paths[$i]}" ] && [ -f "${ping_paths[$i]}" ]; then
                 last_ping=$(cat "${ping_paths[$i]}" 2>/dev/null)
-                if [[ "$last_ping" =~ ^[0-9]+$ ]]; then
+                
+                # หากเจอข้อความ DEAD จากสคริปต์ในเกม ให้เตะเปิดใหม่ทันที!
+                if [[ "$last_ping" == "DEAD" ]]; then
+                    statuses[$i]="หลุด! (Error Msg)"
+                    colors[$i]="$C_RED"
+                    draw_dashboard
+                    relaunch_pkg "$pkg" "$i"
+                elif [[ "$last_ping" =~ ^[0-9]+$ ]]; then
                     diff=$((current_time - last_ping))
                     if [ $diff -gt 60 ]; then
                         statuses[$i]="หลุด! (Dead > 60s)"
