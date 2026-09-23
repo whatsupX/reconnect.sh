@@ -21,7 +21,7 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   \vert{}_\vert{} \vert{}_\vert{}\vert{}_\vert{} \vert{}_\vert{}_\___\vert{}/ \___/___\vert{}_\vert{}\_\vert{}${C_RESET}"
     echo -e "${C_CYAN}                     \vert{}__/${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v7.7 (Ultimate Bug Fixes)${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v7.8 (Syntax Copy Bug Fix)${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX${C_RESET}"
     echo ""
 }
@@ -272,7 +272,9 @@ relaunch_pkg() {
 start_auto_rejoin() {
     clear
     show_header
-    if [[ ! -f "$CONFIG_FILE" \vert{}\vert{} ! -s "$CONFIG_FILE" ]]; then
+    
+    # ลบสัญลักษณ์ || ออกจากโค้ด เพื่อป้องกันการโดนแปลงเป็นสมการ
+    if [[ ! -s "$CONFIG_FILE" ]]; then
         echo -e "${C_RED}❌ ไม่พบข้อมูลจอ! กรุณาไปทำ Auto Setup (เมนู 2) ก่อน${C_RESET}"
         sleep 3
         return
@@ -315,7 +317,8 @@ start_auto_rejoin() {
             pkg="${pkgs[$i]}"
             uname="${unames[$i]}"
             
-            if [[ -z "${ping_paths[$i]}" || ! -f "${ping_paths[$i]}" ]]; then
+            # ลบสัญลักษณ์ || ออกจากบรรทัดนี้ด้วยเช่นกัน
+            if [[ ! -f "${ping_paths[$i]}" ]]; then
                 found_path=$(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${uname}.txt" 2>/dev/null | head -n 1)
                 if [[ -n "$found_path" ]]; then ping_paths[$i]="$found_path"; fi
             fi
