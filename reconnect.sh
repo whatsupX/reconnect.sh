@@ -36,7 +36,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v9.2 (Smart Cookie Binding) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v9.3 (Syntax Spacing Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -218,7 +218,7 @@ setup_cookie() {
     done
     stty onlcr sane 2>/dev/null
 
-    if [[ "$screen_count" -eq 0 ]]; then
+    if (( screen_count == 0 )); then
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
         rm "temp_pkg.txt" 2>/dev/null
         sleep 2
@@ -257,7 +257,7 @@ setup_cookie() {
 
     local cookie_count=${#found_cookies[@]}
     
-    if [[ "$cookie_count" -eq 0 ]]; then
+    if (( cookie_count == 0 )); then
         echo -e "\n${C_RED}❌ ไม่พบ Cookie ในไฟล์ หรือไฟล์ว่างเปล่า!${C_RESET}"
         rm "temp_pkg.txt" 2>/dev/null
         sleep 3
@@ -268,17 +268,17 @@ setup_cookie() {
     echo -e "${C_YELLOW}⏳ กำลังตรวจสอบ Cookie และดึง Username อัตโนมัติจาก Roblox...${C_RESET}\n"
     
     > "$COOKIE_FILE"
-    > "$CONFIG_FILE" # รีเซ็ตไฟล์ผูกบัญชีเดิม
+    > "$CONFIG_FILE" 
     local assigned=0
     
     for i in "${!found_pkgs[@]}"; do
         local pkg="${found_pkgs[$i]}"
         pkg="${pkg//[$'\t\r\n ']/}"
         
-        if [[ $i -lt$cookie_count ]]; then
+        # ปรับแก้การคำนวณไม่ให้เกิด Error
+        if (( i < cookie_count )); then
             local cookie_val="${found_cookies[$i]}"
             
-            # ยิง API เพื่อดึง Username จาก Cookie
             local api_res=$(curl -s -X GET "https://users.roblox.com/v1/users/authenticated" -H "Cookie: .ROBLOSECURITY=$cookie_val")
             local uname=$(echo "$api_res" | grep -o '"name":"[^"]*' | head -n 1 | awk -F'"' '{print $4}')
             
@@ -289,7 +289,6 @@ setup_cookie() {
                 echo -e "${C_GREEN}✔️ จอ $pkg ผูกกับ Username: 👤 $uname${C_RESET}"
             fi
             
-            # บันทึกทั้ง Cookie และตั้งค่า Username อัตโนมัติ
             echo "$pkg $cookie_val" >> "$COOKIE_FILE"
             echo "$pkg:$uname" >> "$CONFIG_FILE"
             ((assigned++))
@@ -367,7 +366,7 @@ start_auto_setup() {
     done
     stty onlcr sane 2>/dev/null
 
-    if [[ "$screen_count" -eq 0 ]]; then
+    if (( screen_count == 0 )); then
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
         read -p "🔍 พิมพ์ชื่อแอป (เช่น roblox, arceus) เพื่อหาใหม่: " custom_pkg
         
@@ -385,7 +384,7 @@ start_auto_setup() {
         fi
     fi
 
-    if [[ "$screen_count" -gt 0 ]]; then
+    if (( screen_count > 0 )); then
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
         echo ""
         
@@ -553,7 +552,7 @@ start_auto_rejoin() {
         fi
     done < "$CONFIG_FILE"
     
-    if [[ ${#pkgs[@]} -eq 0 ]]; then
+    if (( ${#pkgs[@]} == 0 )); then
         echo -e "${C_RED}❌ ข้อมูลเสียหาย! กรุณาไปทำเมนู 2 ใหม่อีกครั้ง${C_RESET}"
         sleep 3
         return
@@ -600,7 +599,8 @@ start_auto_rejoin() {
                     relaunch_pkg "$pkg" "$i"
                 elif [[ "$last_ping" =~ ^[0-9]+$ ]]; then
                     diff=$((current_time - last_ping))
-                    if [[ "$diff" -gt 60 ]]; then
+                    # ใช้รูปแบบความปลอดภัยหลีกเลี่ยง Space หาย
+                    if (( diff > 60 )); then
                         statuses[$i]="หลุด! (Dead > 60s)"
                         colors[$i]="$C_RED"
                         draw_dashboard
@@ -612,7 +612,7 @@ start_auto_rejoin() {
                 else
                     launched_at=${launch_times[$i]:-0}
                     wait_time=$((current_time - launched_at))
-                    if [[ "$wait_time" -gt 150 ]]; then 
+                    if (( wait_time > 150 )); then 
                         statuses[$i]="จอค้าง! (Timeout)"
                         colors[$i]="$C_RED"
                         draw_dashboard
@@ -625,7 +625,7 @@ start_auto_rejoin() {
             else
                 launched_at=${launch_times[$i]:-0}
                 wait_time=$((current_time - launched_at))
-                if [[ "$wait_time" -gt 150 ]]; then 
+                if (( wait_time > 150 )); then 
                     statuses[$i]="จอค้าง! (Timeout)"
                     colors[$i]="$C_RED"
                     draw_dashboard
