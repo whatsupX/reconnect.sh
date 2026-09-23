@@ -34,7 +34,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}        v8.4 (Input Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}        v8.5 (Thai UI Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -67,7 +67,7 @@ check_root() {
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ (แก้บั๊ก Permission)
+# ฝัง Lua อัตโนมัติ 
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -159,8 +159,8 @@ setup_webhook() {
         echo -e "${C_YELLOW}📌 Webhook ปัจจุบัน: (ยังไม่ได้ตั้งค่า)${C_RESET}"
     fi
 
-    echo -e "${C_YELLOW}[ กด Enter โดยไม่พิมพ์อะไร เพื่อใช้ข้อมูลเดิม หรือยกเลิก ]${C_RESET}"
-    echo -e "${C_YELLOW}[ พิมพ์คำว่า 'clear' เพื่อลบ Webhook ทิ้ง ]${C_RESET}"
+    echo -e "${C_YELLOW}< กด Enter โดยไม่พิมพ์อะไร เพื่อใช้ข้อมูลเดิม หรือยกเลิก >${C_RESET}"
+    echo -e "${C_YELLOW}< พิมพ์คำว่า 'clear' เพื่อลบ Webhook ทิ้ง >${C_RESET}"
     read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook ใหม่: " webhook_url
     
     if [[ "$webhook_url" == "clear" ]]; then
@@ -187,7 +187,7 @@ start_auto_setup() {
     
     if [[ -s "$CONFIG_FILE" ]]; then
         echo -e "${C_YELLOW}⚠️ พบข้อมูลเดิมที่เคยบันทึกไว้!${C_RESET}"
-        read -p "❓ ต้องการตั้งค่าใหม่หรือไม่? (y/n) [กด Enter ยกเลิก]: " confirm_reset
+        read -p "❓ ต้องการตั้งค่าใหม่หรือไม่? (y/n) <กด Enter ยกเลิก>: " confirm_reset
         if [[ "$confirm_reset" != "y" && "$confirm_reset" != "Y" ]]; then
             echo -e "${C_GREEN}✅ คงข้อมูลเดิมไว้${C_RESET}"
             sleep 2
@@ -238,7 +238,7 @@ start_auto_setup() {
         local input_data=()
         for pkg in "${found_pkgs[@]}"; do
             pkg="${pkg//[$'\t\r\n ']/}"
-            read -p "👤 ใส่ Username ของจอ [$pkg]: " uname
+            read -p "👤 ใส่ Username ของจอ <$pkg>: " uname
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
             input_data+=("$pkg:$uname")
         done
@@ -259,7 +259,7 @@ start_auto_setup() {
 }
 
 # ==========================================
-# ระบบวาดตาราง Dashboard
+# ระบบวาดตาราง Dashboard (แก้ไขภาษาไทย)
 # ==========================================
 draw_dashboard() {
     stty onlcr sane 2>/dev/null 
@@ -267,18 +267,19 @@ draw_dashboard() {
     show_header
     echo -e "${C_CYAN}--- 📊 Smart Rejoin Dashboard ---${C_RESET}"
     echo -e "▶️ สถานะระบบ: ${global_msg}"
-    echo -e "${C_CYAN}┌──────────────────┬──────────────────┬──────────────────────┐${C_RESET}"
-    printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-20s ${C_CYAN}│${C_RESET}\n" "Package" "Account" "Status"
-    echo -e "${C_CYAN}├──────────────────┼──────────────────┼──────────────────────┤${C_RESET}"
+    echo -e "${C_CYAN}======================================================================${C_RESET}"
+    printf " %-18s : %-18s : %-20s \n" "Package" "Account" "Status"
+    echo -e "${C_CYAN}----------------------------------------------------------------------${C_RESET}"
     for j in "${!pkgs[@]}"; do
         local pkg="${pkgs[$j]}"
         local acc="${unames[$j]}"
         local stat="${statuses[$j]}"
         local col="${colors[$j]}"
-        printf "${C_CYAN}│${C_RESET} \%-16.16s${C_CYAN}│${C_RESET} \%-16.16s${C_CYAN}│${C_RESET}${col}%-20.20s${C_RESET}${C_CYAN}│${C_RESET}\n" "$pkg" "$acc" "$stat"
+        # เอาจุดทศนิยมจำกัดความยาวออก เพื่อไม่ให้ตัดสระภาษาไทย
+        printf " %-18s : %-18s : ${col}%-20s${C_RESET}\n" "$pkg" "$acc" "$stat"
     done
-    echo -e "${C_CYAN}└──────────────────┴──────────────────┴──────────────────────┘${C_RESET}"
-    echo -e "${C_RED}[ กด Ctrl+C เพื่อหยุดการทำงาน ]${C_RESET}"
+    echo -e "${C_CYAN}======================================================================${C_RESET}"
+    echo -e "${C_RED}< กด Ctrl+C เพื่อหยุดการทำงาน >${C_RESET}"
 }
 
 # ==========================================
@@ -453,18 +454,18 @@ trap 'tput cnorm; clear; stty onlcr sane 2>/dev/null; exit' INT
 check_root
 
 # ==========================================
-# เมนูหลัก
+# เมนูหลัก 
 # ==========================================
 while true; do
     clear
     show_header
-    echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Start Auto Rejoin   ${C_YELLOW}Smart System${C_RESET}                   ${C_CYAN}│${C_RESET}"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Detect & Bind${C_RESET}                  ${C_CYAN}│${C_RESET}"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}3${C_RESET}  Manage Webhook      ${C_YELLOW}Discord Autoexec${C_RESET}               ${C_CYAN}│${C_RESET}"
-    echo -e "${C_CYAN}│${C_RESET}                                                        ${C_CYAN}│${C_RESET}"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}0${C_RESET}  Exit                ${C_YELLOW}Close Tool${C_RESET}                     ${C_CYAN}│${C_RESET}"
-    echo -e "${C_CYAN}└────────────────────────────────────────────────────────┘${C_RESET}"
+    echo -e "${C_CYAN}==========================================================${C_RESET}"
+    echo -e "  ${C_GREEN}1${C_RESET}  Start Auto Rejoin   ${C_YELLOW}Smart System${C_RESET}"
+    echo -e "  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Detect & Bind${C_RESET}"
+    echo -e "  ${C_GREEN}3${C_RESET}  Manage Webhook      ${C_YELLOW}Discord Autoexec${C_RESET}"
+    echo -e ""
+    echo -e "  ${C_GREEN}0${C_RESET}  Exit                ${C_YELLOW}Close Tool${C_RESET}"
+    echo -e "${C_CYAN}==========================================================${C_RESET}"
     echo ""
     read -p "select: " opt_main
     case $opt_main in
