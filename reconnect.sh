@@ -36,7 +36,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v9.3 (Syntax Spacing Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v9.4 (Custom Search Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -200,7 +200,7 @@ execute_cookie_login() {
 }
 
 # ==========================================
-# เมนู 4: ระบบใส่ Cookie (ผูกบัญชีอัตโนมัติ)
+# เมนู 4: ระบบใส่ Cookie (พร้อมระบบค้นหาแอป)
 # ==========================================
 setup_cookie() {
     clear
@@ -218,8 +218,28 @@ setup_cookie() {
     done
     stty onlcr sane 2>/dev/null
 
+    # 📌 เพิ่มระบบค้นหาชื่อแอปเอง ถ้าไม่เจอ roblox.clien
     if (( screen_count == 0 )); then
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
+        read -p "🔍 พิมพ์ชื่อแอป (เช่น roblox, arceus, free) เพื่อหาใหม่: " custom_pkg
+        
+        if [[ -n "$custom_pkg" ]]; then
+            echo -e "${C_YELLOW}🔄 กำลังค้นหาคำว่า '$custom_pkg'...${C_RESET}"
+            > "temp_pkg.txt"
+            for line in $(pm list packages); do
+                if [[ "${line,,}" == *"${custom_pkg,,}"* ]]; then
+                    pkg_name="${line#package:}"
+                    echo "$pkg_name" >> "temp_pkg.txt"
+                    ((screen_count++))
+                fi
+            done
+            stty onlcr sane 2>/dev/null
+        fi
+    fi
+
+    # เช็คอีกรอบ ถ้ายังหาไม่เจออีกให้เด้งกลับ
+    if (( screen_count == 0 )); then
+        echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย ยกเลิกการทำรายการ${C_RESET}"
         rm "temp_pkg.txt" 2>/dev/null
         sleep 2
         return
@@ -275,7 +295,6 @@ setup_cookie() {
         local pkg="${found_pkgs[$i]}"
         pkg="${pkg//[$'\t\r\n ']/}"
         
-        # ปรับแก้การคำนวณไม่ให้เกิด Error
         if (( i < cookie_count )); then
             local cookie_val="${found_cookies[$i]}"
             
@@ -298,7 +317,7 @@ setup_cookie() {
     rm "temp_pkg.txt" 2>/dev/null
     
     echo -e "\n${C_GREEN}🎉 บันทึก Cookie และผูกบัญชีสำเร็จ! (ดำเนินการให้ $assigned จอ)${C_RESET}"
-    echo -e "${C_CYAN}💡 คุณสามารถกดใช้งาน Start Auto Rejoin ได้เลยทันที!${C_RESET}"
+    echo -e "${C_CYAN}💡 คุณสามารถกดใช้งาน Start Auto Rejoin หรือเมนู 5 ได้เลยทันที!${C_RESET}"
     sleep 4
 }
 
@@ -599,7 +618,6 @@ start_auto_rejoin() {
                     relaunch_pkg "$pkg" "$i"
                 elif [[ "$last_ping" =~ ^[0-9]+$ ]]; then
                     diff=$((current_time - last_ping))
-                    # ใช้รูปแบบความปลอดภัยหลีกเลี่ยง Space หาย
                     if (( diff > 60 )); then
                         statuses[$i]="หลุด! (Dead > 60s)"
                         colors[$i]="$C_RED"
