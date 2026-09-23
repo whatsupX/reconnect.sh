@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # ==========================================
-# กำหนดค่าสี (ANSI Colors)
+# กำหนดค่าสี (ใช้ \033 แทน \e เพื่อป้องกันบั๊กหน้าจอ)
 # ==========================================
-C_CYAN='\e[36m'
-C_GREEN='\e[32m'
-C_YELLOW='\e[33m'
-C_RED='\e[31m'
-C_PURPLE='\e[35m'
-C_RESET='\e[0m'
+C_CYAN='\033[36m'
+C_GREEN='\033[32m'
+C_YELLOW='\033[33m'
+C_RED='\033[31m'
+C_PURPLE='\033[35m'
+C_RESET='\033[0m'
 CONFIG_FILE="roblox_accounts.cfg"
 LUA_FILENAME="status_check.lua"
 
@@ -21,28 +21,29 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   \vert{}_\vert{} \vert{}_\vert{}\vert{}_\vert{} \vert{}_\vert{}_\___\vert{}/ \___/___\vert{}_\vert{}\_\vert{}${C_RESET}"
     echo -e "${C_CYAN}                     \vert{}__/${C_RESET}"
-    echo -e "${C_GREEN}              TOOL v7.5${C_RESET}"
+    echo -e "${C_GREEN}              TOOL v7.6${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# ฟังก์ชันรันคำสั่ง Root แบบปลอดภัย (ไม่พังหน้าจอ)
+# ฟังก์ชันรันคำสั่ง Root แบบปลอดภัยขั้นสุด (< /dev/null ป้องกันจอรวน)
 # ==========================================
 safe_su() {
-    su -c "$1" > /dev/null 2>&1
-    stty sane 2>/dev/null
+    su -c "$1" < /dev/null > /dev/null 2>&1
+    stty onlcr sane 2>/dev/null
 }
 
 # ==========================================
 # ระบบตรวจสอบสิทธิ์ Root
 # ==========================================
 check_root() {
+    stty onlcr sane 2>/dev/null
     clear
     show_header
     echo -e "${C_CYAN}🔍 กำลังตรวจสอบสิทธิ์ Root ในเครื่อง...${C_RESET}"
     
-    if ! su -c 'true' > /dev/null 2>&1; then
+    if ! su -c 'true' < /dev/null > /dev/null 2>&1; then
         echo -e "${C_RED}❌ ตรวจพบว่าเครื่องของคุณยังไม่ได้ Root! หรือยังไม่ได้อนุญาตสิทธิ์ให้ Termux${C_RESET}"
         echo -e "${C_YELLOW}⚠️ กรุณาไปเปิดใช้งาน Root ในการตั้งค่าของ Cloud Phone หรือกด Grant (อนุญาต) สิทธิ์ก่อนใช้งาน${C_RESET}"
         echo ""
@@ -51,7 +52,7 @@ check_root() {
         echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว! พร้อมใช้งาน${C_RESET}"
         sleep 1
     fi
-    stty sane 2>/dev/null
+    stty onlcr sane 2>/dev/null
 }
 
 # ==========================================
@@ -123,7 +124,7 @@ EOF
 }
 
 # ==========================================
-# เมนู 2: ระบบค้นหาจออัตโนมัติ (Custom Search)
+# เมนู 2: ระบบค้นหาจออัตโนมัติ
 # ==========================================
 start_auto_setup() {
     clear
@@ -143,10 +144,9 @@ start_auto_setup() {
     echo -e "${C_YELLOW}🔄 ระบบกำลังค้นหาแพ็กเกจโคลนทั้งหมด...${C_RESET}"
     
     pm list packages | grep -i "roblox.clien" | cut -f 2 -d ':' > "temp_pkg.txt"
-    stty sane 2>/dev/null
+    stty onlcr sane 2>/dev/null
     screen_count=$(wc -l < "temp_pkg.txt")
 
-    # ถ้าระบบหาแพ็กเกจปกติไม่เจอ ให้ถามผู้ใช้เพื่อค้นหาใหม่
     if [ "$screen_count" -eq 0 ]; then
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
         read -p "🔍 กรุณาพิมพ์ชื่อแอป (หรือคำย่อ เช่น roblox, arceus) เพื่อค้นหาใหม่: " custom_pkg
@@ -154,12 +154,11 @@ start_auto_setup() {
         if [ -n "$custom_pkg" ]; then
             echo -e "${C_YELLOW}🔄 กำลังค้นหาแพ็กเกจที่มีคำว่า '$custom_pkg'...${C_RESET}"
             pm list packages | grep -i "$custom_pkg" | cut -f 2 -d ':' > "temp_pkg.txt"
-            stty sane 2>/dev/null
+            stty onlcr sane 2>/dev/null
             screen_count=$(wc -l < "temp_pkg.txt")
         fi
     fi
 
-    # ถ้าหาเจอแล้ว ให้ดำเนินการผูก Username ต่อ
     if [ "$screen_count" -gt 0 ]; then
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
         echo -e "${C_YELLOW}⚠️ เพื่อให้ระบบ Rejoin ทำงานได้ กรุณาใส่ Username ให้ตรงกับแต่ละจอ${C_RESET}"
@@ -194,7 +193,7 @@ start_auto_setup() {
 # ระบบวาดตาราง Live Dashboard
 # ==========================================
 draw_dashboard() {
-    stty sane 2>/dev/null 
+    stty onlcr sane 2>/dev/null 
     clear
     show_header
     echo -e "${C_CYAN}--- 📊 Smart Rejoin Dashboard ---${C_RESET}"
@@ -355,9 +354,9 @@ start_auto_rejoin() {
 }
 
 # ==========================================
-# ดักจับ Ctrl+C เพื่อคืนค่า Cursor
+# ดักจับ Ctrl+C เพื่อคืนค่า Cursor และซ่อมหน้าจอ
 # ==========================================
-trap 'tput cnorm; clear; stty sane 2>/dev/null; exit' INT
+trap 'tput cnorm; clear; stty onlcr sane 2>/dev/null; exit' INT
 
 # ==========================================
 # เริ่มต้นการทำงาน 
@@ -381,7 +380,7 @@ while true; do
         1) start_auto_rejoin ;;
         2) start_auto_setup ;;
         3) setup_webhook ;;
-        0) clear; tput cnorm; stty sane 2>/dev/null; exit 0 ;;
+        0) clear; tput cnorm; stty onlcr sane 2>/dev/null; exit 0 ;;
         *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
     esac
 done
