@@ -34,7 +34,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}        v8.5 (Thai UI Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}       v8.6 (Box UI Restored) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -259,7 +259,7 @@ start_auto_setup() {
 }
 
 # ==========================================
-# ระบบวาดตาราง Dashboard (แก้ไขภาษาไทย)
+# ระบบวาดตาราง Dashboard (กรอบ Box UI)
 # ==========================================
 draw_dashboard() {
     stty onlcr sane 2>/dev/null 
@@ -267,18 +267,23 @@ draw_dashboard() {
     show_header
     echo -e "${C_CYAN}--- 📊 Smart Rejoin Dashboard ---${C_RESET}"
     echo -e "▶️ สถานะระบบ: ${global_msg}"
-    echo -e "${C_CYAN}======================================================================${C_RESET}"
-    printf " %-18s : %-18s : %-20s \n" "Package" "Account" "Status"
-    echo -e "${C_CYAN}----------------------------------------------------------------------${C_RESET}"
+    
+    # วาดกรอบส่วนหัว
+    echo -e "${C_CYAN}┌──────────────────┬──────────────────┬──────────────────────┐${C_RESET}"
+    printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-20s ${C_CYAN}│${C_RESET}\n" "Package" "Account" "Status"
+    echo -e "${C_CYAN}├──────────────────┼──────────────────┼──────────────────────┤${C_RESET}"
+    
+    # วาดกรอบข้อมูล (เอาการตัดตัวอักษรออกเพื่อให้ภาษาไทยไม่ขาด)
     for j in "${!pkgs[@]}"; do
         local pkg="${pkgs[$j]}"
         local acc="${unames[$j]}"
         local stat="${statuses[$j]}"
         local col="${colors[$j]}"
-        # เอาจุดทศนิยมจำกัดความยาวออก เพื่อไม่ให้ตัดสระภาษาไทย
-        printf " %-18s : %-18s : ${col}%-20s${C_RESET}\n" "$pkg" "$acc" "$stat"
+        printf "${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET}${col}%-20s${C_RESET}${C_CYAN}│${C_RESET}\n" "$pkg" "$acc" "$stat"
     done
-    echo -e "${C_CYAN}======================================================================${C_RESET}"
+    
+    # วาดขอบล่างสุด
+    echo -e "${C_CYAN}└──────────────────┴──────────────────┴──────────────────────┘${C_RESET}"
     echo -e "${C_RED}< กด Ctrl+C เพื่อหยุดการทำงาน >${C_RESET}"
 }
 
@@ -399,8 +404,14 @@ start_auto_rejoin() {
             uname="${unames[$i]}"
             
             if [[ -z "${ping_paths[$i]}" ]]; then
-                found_path=$(su -c "find /storage/emulated/0 -maxdepth 6 -type f -name 'ping_${uname}.txt' 2>/dev/null | head -n 1")
-                if [[ -n "$found_path" ]]; then ping_paths[$i]="$found_path"; fi
+                # เลี่ยงการใช้คำสั่ง Pipe (|) เพื่อป้องกันบั๊ก Google Lens
+                local found_paths=$(su -c "find /storage/emulated/0 -maxdepth 6 -type f -name 'ping_${uname}.txt' 2>/dev/null")
+                local final_path=""
+                for f in $found_paths; do
+                    final_path="$f"
+                    break
+                done
+                if [[ -n "$final_path" ]]; then ping_paths[$i]="$final_path"; fi
             fi
 
             if [[ -n "${ping_paths[$i]}" ]]; then
@@ -454,18 +465,18 @@ trap 'tput cnorm; clear; stty onlcr sane 2>/dev/null; exit' INT
 check_root
 
 # ==========================================
-# เมนูหลัก 
+# เมนูหลัก (หน้าต่าง Box UI)
 # ==========================================
 while true; do
     clear
     show_header
-    echo -e "${C_CYAN}==========================================================${C_RESET}"
-    echo -e "  ${C_GREEN}1${C_RESET}  Start Auto Rejoin   ${C_YELLOW}Smart System${C_RESET}"
-    echo -e "  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Detect & Bind${C_RESET}"
-    echo -e "  ${C_GREEN}3${C_RESET}  Manage Webhook      ${C_YELLOW}Discord Autoexec${C_RESET}"
-    echo -e ""
-    echo -e "  ${C_GREEN}0${C_RESET}  Exit                ${C_YELLOW}Close Tool${C_RESET}"
-    echo -e "${C_CYAN}==========================================================${C_RESET}"
+    echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Start Auto Rejoin   ${C_YELLOW}Smart System${C_RESET}                   ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Detect & Bind${C_RESET}                  ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}3${C_RESET}  Manage Webhook      ${C_YELLOW}Discord Autoexec${C_RESET}               ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}                                                        ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}0${C_RESET}  Exit                ${C_YELLOW}Close Tool${C_RESET}                     ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}└────────────────────────────────────────────────────────┘${C_RESET}"
     echo ""
     read -p "select: " opt_main
     case $opt_main in
