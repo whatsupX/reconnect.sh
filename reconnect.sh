@@ -19,15 +19,15 @@ show_header() {
     echo -e "${C_CYAN}  _____ _  _   ___ ___ _  ___ ___ _  _ ${C_RESET}"
     echo -e "${C_CYAN} |_   _| || | | _ \ __| |/ _ \_ _| \| |${C_RESET}"
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
-    echo -e "${C_CYAN}   |_| |_||_| |_|_\___|/ \___/___|_|\_|${C_RESET}"
-    echo -e "${C_CYAN}                     |__/              ${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v7.4 (Instant Disconnect)     ${C_RESET}"
-    echo -e "${C_YELLOW}          Made by whatsupX             ${C_RESET}"
+    echo -e "${C_CYAN}   \vert{}_\vert{} \vert{}_\vert{}\vert{}_\vert{} \vert{}_\vert{}_\___\vert{}/ \___/___\vert{}_\vert{}\_\vert{}${C_RESET}"
+    echo -e "${C_CYAN}                     \vert{}__/${C_RESET}"
+    echo -e "${C_GREEN}              TOOL v7.5${C_RESET}"
+    echo -e "${C_YELLOW}          Made by whatsupX${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# ฟังก์ชันรันคำสั่ง Root แบบปลอดภัย
+# ฟังก์ชันรันคำสั่ง Root แบบปลอดภัย (ไม่พังหน้าจอ)
 # ==========================================
 safe_su() {
     su -c "$1" > /dev/null 2>&1
@@ -55,7 +55,7 @@ check_root() {
 }
 
 # ==========================================
-# เมนู 3: ระบบฝัง Lua Script (เพิ่มระบบตรวจจับ Error ด่วน)
+# เมนู 3: ระบบฝัง Lua Script
 # ==========================================
 setup_webhook() {
     clear
@@ -89,7 +89,6 @@ local webhookUrl = "$webhook_url"
 local playerName = player and player.Name or "Unknown"
 local displayName = player and player.DisplayName or "Unknown"
 local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
-local isDisconnected = false
 
 local function sendWebhook(title, desc, colorHex)
     if webhookUrl == "" or not httpRequest then return end
@@ -107,31 +106,24 @@ local function sendWebhook(title, desc, colorHex)
 end
 
 sendWebhook("✅ เข้าร่วมเซิร์ฟเวอร์สำเร็จ!", "**JobId:** \`" .. tostring(game.JobId) .. "\`", 65280)
-
--- ดักจับตอนเกมแจ้งเตือนหลุด
 GuiService.ErrorMessageChanged:Connect(function(errorMsg)
-    if errorMsg and errorMsg ~= "" then 
-        isDisconnected = true
-        pcall(function() writefile("ping_" .. playerName .. ".txt", "DEAD") end)
-        sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) 
-    end
+    if errorMsg and errorMsg ~= "" then sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) end
 end)
 
 task.spawn(function()
     while task.wait(10) do
-        if isDisconnected then break end
         pcall(function() writefile("ping_" .. playerName .. ".txt", tostring(os.time())) end)
     end
 end)
 EOF
-        echo -e "${C_GREEN}✔️ เพิ่มไฟล์ระบบตรวจจับหลุดฉับพลันลงใน: $folder สำเร็จ${C_RESET}"
+        echo -e "${C_GREEN}✔️ เพิ่มไฟล์ระบบชีพจรลงใน: $folder สำเร็จ${C_RESET}"
     done
     echo ""
     read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
 }
 
 # ==========================================
-# เมนู 2: ระบบค้นหาจออัตโนมัติ
+# เมนู 2: ระบบค้นหาจออัตโนมัติ (Custom Search)
 # ==========================================
 start_auto_setup() {
     clear
@@ -150,11 +142,24 @@ start_auto_setup() {
 
     echo -e "${C_YELLOW}🔄 ระบบกำลังค้นหาแพ็กเกจโคลนทั้งหมด...${C_RESET}"
     
-    pm list packages | grep "roblox.clien" | cut -f 2 -d ':' > "temp_pkg.txt"
+    pm list packages | grep -i "roblox.clien" | cut -f 2 -d ':' > "temp_pkg.txt"
     stty sane 2>/dev/null
-    
     screen_count=$(wc -l < "temp_pkg.txt")
 
+    # ถ้าระบบหาแพ็กเกจปกติไม่เจอ ให้ถามผู้ใช้เพื่อค้นหาใหม่
+    if [ "$screen_count" -eq 0 ]; then
+        echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
+        read -p "🔍 กรุณาพิมพ์ชื่อแอป (หรือคำย่อ เช่น roblox, arceus) เพื่อค้นหาใหม่: " custom_pkg
+        
+        if [ -n "$custom_pkg" ]; then
+            echo -e "${C_YELLOW}🔄 กำลังค้นหาแพ็กเกจที่มีคำว่า '$custom_pkg'...${C_RESET}"
+            pm list packages | grep -i "$custom_pkg" | cut -f 2 -d ':' > "temp_pkg.txt"
+            stty sane 2>/dev/null
+            screen_count=$(wc -l < "temp_pkg.txt")
+        fi
+    fi
+
+    # ถ้าหาเจอแล้ว ให้ดำเนินการผูก Username ต่อ
     if [ "$screen_count" -gt 0 ]; then
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
         echo -e "${C_YELLOW}⚠️ เพื่อให้ระบบ Rejoin ทำงานได้ กรุณาใส่ Username ให้ตรงกับแต่ละจอ${C_RESET}"
@@ -167,7 +172,7 @@ start_auto_setup() {
         for pkg in "${found_pkgs[@]}"; do
             read -p "👤 ใส่ Username ของจอ [$pkg]: " uname
             [[ -z "$uname" ]] && uname="Unknown"
-            input_data+=("$pkg|$uname")
+            input_data+=("$pkg\vert{}$uname")
         done
         
         > "$CONFIG_FILE"
@@ -175,11 +180,12 @@ start_auto_setup() {
             echo "$data" >> "$CONFIG_FILE"
         done
         
-        rm "temp_pkg.txt"
+        rm "temp_pkg.txt" 2>/dev/null
         echo -e "\n${C_GREEN}🎉 บันทึกข้อมูลและผูกบัญชีครบทั้งหมดเรียบร้อยแล้ว!${C_RESET}"
         sleep 2
     else
-        echo -e "${C_RED}❌ ไม่พบแพ็กเกจโคลนที่ขึ้นต้นด้วย 'roblox.clien'${C_RESET}"
+        echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่คุณค้นหาในเครื่องนี้${C_RESET}"
+        rm "temp_pkg.txt" 2>/dev/null
         sleep 2
     fi
 }
@@ -201,7 +207,7 @@ draw_dashboard() {
         local acc="${unames[$j]}"
         local stat="${statuses[$j]}"
         local col="${colors[$j]}"
-        printf "| %-16s | %-16s | ${col}%-20s${C_RESET} |\n" "$pkg" "$acc" "$stat"
+        printf "| %-16s | %-16s | ${col}%-20s${C_RESET} \vert{}\n" "$pkg" "$acc" "$stat"
     done
     echo "================================================================="
     echo -e "${C_RED}[ กด Ctrl+C เพื่อหยุดการทำงาน ]${C_RESET}"
@@ -260,7 +266,7 @@ relaunch_pkg() {
 start_auto_rejoin() {
     clear
     show_header
-    if [ ! -f "$CONFIG_FILE" ] || [ ! -s "$CONFIG_FILE" ]; then
+    if [ ! -f "$CONFIG_FILE" ] \vert{}\vert{} [ ! -s "$CONFIG_FILE" ]; then
         echo -e "${C_RED}❌ ไม่พบข้อมูลจอ! กรุณาไปทำ Auto Setup (เมนู 2) ก่อน${C_RESET}"
         sleep 3
         return
@@ -311,7 +317,6 @@ start_auto_rejoin() {
             if [ -n "${ping_paths[$i]}" ] && [ -f "${ping_paths[$i]}" ]; then
                 last_ping=$(cat "${ping_paths[$i]}" 2>/dev/null)
                 
-                # หากเจอข้อความ DEAD จากสคริปต์ในเกม ให้เตะเปิดใหม่ทันที!
                 if [[ "$last_ping" == "DEAD" ]]; then
                     statuses[$i]="หลุด! (Error Msg)"
                     colors[$i]="$C_RED"
