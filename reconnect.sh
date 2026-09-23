@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# กำหนดค่าสี
+# กำหนดค่าสี (ใช้ \033 แทน \e ป้องกันจอรวน)
 # ==========================================
 C_CYAN='\033[36m'
 C_GREEN='\033[32m'
@@ -9,9 +9,12 @@ C_YELLOW='\033[33m'
 C_RED='\033[31m'
 C_PURPLE='\033[35m'
 C_RESET='\033[0m'
+
 CONFIG_FILE="roblox_accounts.cfg"
+WEBHOOK_FILE="webhook.cfg"
 LUA_FILENAME="status_check.lua"
 
+# ล้างไฟล์ตั้งค่าที่พังจากบั๊ก \vert{} อัตโนมัติ (เผื่อหลงเหลือ)
 if [[ -f "$CONFIG_FILE" ]]; then
     check_bad=$(grep "vert" "$CONFIG_FILE" 2>/dev/null)
     if [[ -n "$check_bad" ]]; then
@@ -20,13 +23,16 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # ==========================================
-# ฟังก์ชันแสดงส่วนหัว
+# ฟังก์ชันแสดงส่วนหัว (โลโก้ whatsupX แบบ Block Font)
 # ==========================================
 show_header() {
-    echo -e "${C_CYAN}==========================================${C_RESET}"
-    echo -e "${C_GREEN}    TH REJOIN TOOL (v8.1 Root Inject)${C_RESET}"
-    echo -e "${C_YELLOW}             Made by whatsupX${C_RESET}"
-    echo -e "${C_CYAN}==========================================${C_RESET}"
+    echo -e "${C_CYAN}██╗    ██╗██╗  ██╗ █████╗ ████████╗███████╗██╗   ██╗██████╗ ██╗  ██╗${C_RESET}"
+    echo -e "${C_CYAN}██║    ██║██║  ██║██╔══██╗╚══██╔══╝██╔════╝██║   ██║██╔══██╗╚██╗██╔╝${C_RESET}"
+    echo -e "${C_CYAN}██║ █╗ ██║███████║███████║   ██║   ███████╗██║   ██║██████╔╝ ╚███╔╝ ${C_RESET}"
+    echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
+    echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
+    echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
+    echo -e "${C_YELLOW}         v8.3 (Box UI) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -59,28 +65,24 @@ check_root() {
 }
 
 # ==========================================
-# เมนู 3: ระบบฝัง Lua Script (ทะลวงด้วย Root)
+# ฟังก์ชันแกนกลาง: ฝัง Lua อัตโนมัติด้วย Root
 # ==========================================
-setup_webhook() {
-    clear
-    show_header
-    echo -e "${C_CYAN}--- Setup Discord Webhook & Autoexec ---${C_RESET}"
-    read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook [กด Enter เพื่อยกเลิก]: " webhook_url
-    if [[ -z "$webhook_url" ]]; then return; fi
-
-    echo -e "${C_YELLOW}🔍 กำลังใช้ Root ค้นหาโฟลเดอร์ Autoexec (อาจใช้เวลาสักครู่)...${C_RESET}"
+inject_lua_script() {
+    echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
     
-    # ใช้ Root ค้นหาเพื่อทะลวง Android/data
-    autoexec_folders=$(su -c "find /storage/emulated/0 -maxdepth 6 -type d -iname 'autoexec' 2>/dev/null")
+    local saved_webhook=""
+    if [[ -f "$WEBHOOK_FILE" ]]; then
+        saved_webhook=$(cat "$WEBHOOK_FILE" | tr -d '\r\n')
+    fi
+
+    local autoexec_folders=$(su -c "find /storage/emulated/0 -maxdepth 6 -type d -iname 'autoexec' 2>/dev/null")
 
     if [[ -z "$autoexec_folders" ]]; then
-        echo -e "${C_RED}❌ ไม่พบโฟลเดอร์ Autoexec ในเครื่อง${C_RESET}"
-        echo -e "${C_YELLOW}💡 แนะนำให้เปิดเข้าเกมให้ถึงหน้าแรก 1 ครั้งเพื่อให้แอปสร้างโฟลเดอร์ก่อนครับ${C_RESET}"
-        sleep 4
+        echo -e "${C_YELLOW}⚠️ ไม่พบโฟลเดอร์ Autoexec (ระบบอาจสร้างขึ้นหลังจากเปิดเกมรอบแรก)${C_RESET}"
+        sleep 2
         return
     fi
 
-    # สร้างไฟล์ชั่วคราวในพื้นที่ของ Termux
     TEMP_LUA="$HOME/temp_status_check.lua"
     cat <<EOF > "$TEMP_LUA"
 if not game:IsLoaded() then game.Loaded:Wait() end
@@ -88,7 +90,7 @@ local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local GuiService = game:GetService("GuiService")
 local player = Players.LocalPlayer
-local webhookUrl = "$webhook_url"
+local webhookUrl = "$saved_webhook"
 local playerName = player and player.Name or "Unknown"
 local displayName = player and player.DisplayName or "Unknown"
 local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
@@ -127,25 +129,48 @@ task.spawn(function()
 end)
 EOF
 
-    # ใช้ Root ก๊อปปี้ไฟล์ไปยัดใน Autoexec ทุกอันที่เจอ
-    found_any="false"
     for folder in $autoexec_folders; do
-        found_any="true"
-        target_path="$folder/$LUA_FILENAME"
+        local target_path="$folder/$LUA_FILENAME"
         su -c "cp '$TEMP_LUA' '$target_path'"
         su -c "chmod 777 '$target_path'"
-        echo -e "${C_GREEN}✔️ ฝังสคริปต์ด้วย Root สำเร็จ: $folder${C_RESET}"
+        echo -e "${C_GREEN}✔️ ฝังสคริปต์อัปเดตลงใน: $folder${C_RESET}"
     done
 
     rm "$TEMP_LUA" 2>/dev/null
+    sleep 1
+}
 
-    if [[ "$found_any" == "false" ]]; then
-        echo -e "${C_RED}❌ เกิดข้อผิดพลาด ไม่สามารถฝังไฟล์ได้${C_RESET}"
-        sleep 3
+# ==========================================
+# เมนู 3: จัดการ Webhook
+# ==========================================
+setup_webhook() {
+    clear
+    show_header
+    echo -e "${C_CYAN}--- Manage Discord Webhook ---${C_RESET}"
+    
+    if [[ -f "$WEBHOOK_FILE" ]]; then
+        local current_hook=$(cat "$WEBHOOK_FILE" | tr -d '\r\n')
+        echo -e "${C_YELLOW}📌 Webhook ปัจจุบัน: ${current_hook}${C_RESET}"
     else
-        echo ""
-        read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
+        echo -e "${C_YELLOW}📌 Webhook ปัจจุบัน: (ยังไม่ได้ตั้งค่า)${C_RESET}"
     fi
+
+    echo -e "${C_YELLOW}[ กด Enter โดยไม่พิมพ์อะไร เพื่อใช้ข้อมูลเดิม หรือยกเลิก ]${C_RESET}"
+    echo -e "${C_YELLOW}[ พิมพ์คำว่า 'clear' เพื่อลบ Webhook ทิ้ง ]${C_RESET}"
+    read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook ใหม่: " webhook_url
+    
+    if [[ "$webhook_url" == "clear" ]]; then
+        rm "$WEBHOOK_FILE" 2>/dev/null
+        echo -e "${C_GREEN}✅ ลบ Webhook เรียบร้อยแล้ว!${C_RESET}"
+    elif [[ -n "$webhook_url" ]]; then
+        echo "$webhook_url" > "$WEBHOOK_FILE"
+        echo -e "${C_GREEN}✅ บันทึก Webhook เรียบร้อยแล้ว!${C_RESET}"
+    fi
+
+    inject_lua_script
+    
+    echo ""
+    read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
 }
 
 # ==========================================
@@ -230,7 +255,7 @@ start_auto_setup() {
 }
 
 # ==========================================
-# ระบบวาดตาราง
+# ระบบวาดตาราง Dashboard (ใช้กรอบ Box UI)
 # ==========================================
 draw_dashboard() {
     stty onlcr sane 2>/dev/null 
@@ -238,17 +263,17 @@ draw_dashboard() {
     show_header
     echo -e "${C_CYAN}--- 📊 Smart Rejoin Dashboard ---${C_RESET}"
     echo -e "▶️ สถานะระบบ: ${global_msg}"
-    echo "================================================================="
-    printf "  %-16s : %-16s : %-20s \n" "Package" "Account" "Status"
-    echo "================================================================="
+    echo -e "${C_CYAN}┌──────────────────┬──────────────────┬──────────────────────┐${C_RESET}"
+    printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-20s ${C_CYAN}│${C_RESET}\n" "Package" "Account" "Status"
+    echo -e "${C_CYAN}├──────────────────┼──────────────────┼──────────────────────┤${C_RESET}"
     for j in "${!pkgs[@]}"; do
         local pkg="${pkgs[$j]}"
         local acc="${unames[$j]}"
         local stat="${statuses[$j]}"
         local col="${colors[$j]}"
-        printf "  %-16s : %-16s : ${col}%-20s${C_RESET} \n" "$pkg" "$acc" "$stat"
+        printf "${C_CYAN}│${C_RESET} \%-16.16s${C_CYAN}│${C_RESET} \%-16.16s${C_CYAN}│${C_RESET}${col}%-20.20s${C_RESET}${C_CYAN}│${C_RESET}\n" "$pkg" "$acc" "$stat"
     done
-    echo "================================================================="
+    echo -e "${C_CYAN}└──────────────────┴──────────────────┴──────────────────────┘${C_RESET}"
     echo -e "${C_RED}[ กด Ctrl+C เพื่อหยุดการทำงาน ]${C_RESET}"
 }
 
@@ -312,6 +337,8 @@ start_auto_rejoin() {
         return
     fi
 
+    inject_lua_script
+
     echo -e "${C_CYAN}--- Auto Rejoin Setup ---${C_RESET}"
     read -p "🎯 Enter Place ID: " place_id
     if [[ -z "$place_id" ]]; then return; fi
@@ -360,14 +387,12 @@ start_auto_rejoin() {
             pkg="${pkgs[$i]}"
             uname="${unames[$i]}"
             
-            # ใช้ Root ค้นหาไฟล์ชีพจร เพื่อทะลวง Android/data
             if [[ -z "${ping_paths[$i]}" ]]; then
                 found_path=$(su -c "find /storage/emulated/0 -maxdepth 6 -type f -name 'ping_${uname}.txt' 2>/dev/null | head -n 1")
                 if [[ -n "$found_path" ]]; then ping_paths[$i]="$found_path"; fi
             fi
 
             if [[ -n "${ping_paths[$i]}" ]]; then
-                # ใช้ Root อ่านไฟล์ชีพจร
                 last_ping=$(su -c "cat '${ping_paths[$i]}'" 2>/dev/null)
                 
                 if [[ "$last_ping" == "DEAD" ]]; then
@@ -418,18 +443,20 @@ trap 'tput cnorm; clear; stty onlcr sane 2>/dev/null; exit' INT
 check_root
 
 # ==========================================
-# เมนูหลัก
+# เมนูหลัก (หน้าต่าง Box UI แบบใหม่)
 # ==========================================
 while true; do
     clear
     show_header
-    echo -e "${C_CYAN}Available Features:${C_RESET}"
-    echo -e "${C_CYAN}1.${C_RESET} Start Auto Rejoin"
-    echo -e "${C_CYAN}2.${C_RESET} Start Auto Setup (Detect & Bind)"
-    echo -e "${C_CYAN}3.${C_RESET} Setup Webhook & Autoexec"
-    echo -e "${C_CYAN}0.${C_RESET} Exit"
+    echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Start Auto Rejoin   ${C_YELLOW}Smart System${C_RESET}                   ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Detect & Bind${C_RESET}                  ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}3${C_RESET}  Manage Webhook      ${C_YELLOW}Discord Autoexec${C_RESET}               ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}                                                        ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}0${C_RESET}  Exit                ${C_YELLOW}Close Tool${C_RESET}                     ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}└────────────────────────────────────────────────────────┘${C_RESET}"
     echo ""
-    read -p "Select an option: " opt_main
+    read -p "select: " opt_main
     case $opt_main in
         1) start_auto_rejoin ;;
         2) start_auto_setup ;;
