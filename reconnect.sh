@@ -34,7 +34,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}       v8.6 (Box UI Restored) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v8.7 (Status Sync Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -259,7 +259,7 @@ start_auto_setup() {
 }
 
 # ==========================================
-# ระบบวาดตาราง Dashboard (กรอบ Box UI)
+# ระบบวาดตาราง Dashboard (Box UI)
 # ==========================================
 draw_dashboard() {
     stty onlcr sane 2>/dev/null 
@@ -268,12 +268,10 @@ draw_dashboard() {
     echo -e "${C_CYAN}--- 📊 Smart Rejoin Dashboard ---${C_RESET}"
     echo -e "▶️ สถานะระบบ: ${global_msg}"
     
-    # วาดกรอบส่วนหัว
     echo -e "${C_CYAN}┌──────────────────┬──────────────────┬──────────────────────┐${C_RESET}"
     printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-20s ${C_CYAN}│${C_RESET}\n" "Package" "Account" "Status"
     echo -e "${C_CYAN}├──────────────────┼──────────────────┼──────────────────────┤${C_RESET}"
     
-    # วาดกรอบข้อมูล (เอาการตัดตัวอักษรออกเพื่อให้ภาษาไทยไม่ขาด)
     for j in "${!pkgs[@]}"; do
         local pkg="${pkgs[$j]}"
         local acc="${unames[$j]}"
@@ -282,7 +280,6 @@ draw_dashboard() {
         printf "${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET}${col}%-20s${C_RESET}${C_CYAN}│${C_RESET}\n" "$pkg" "$acc" "$stat"
     done
     
-    # วาดขอบล่างสุด
     echo -e "${C_CYAN}└──────────────────┴──────────────────┴──────────────────────┘${C_RESET}"
     echo -e "${C_RED}< กด Ctrl+C เพื่อหยุดการทำงาน >${C_RESET}"
 }
@@ -350,7 +347,6 @@ start_auto_rejoin() {
     # ฝังสคริปต์อัตโนมัติ
     inject_lua_script
 
-    # รีเซ็ตหน้าจอและคีย์บอร์ดให้สะอาดพร้อมรับข้อมูล
     stty onlcr sane 2>/dev/null
     clear
     show_header
@@ -404,7 +400,6 @@ start_auto_rejoin() {
             uname="${unames[$i]}"
             
             if [[ -z "${ping_paths[$i]}" ]]; then
-                # เลี่ยงการใช้คำสั่ง Pipe (|) เพื่อป้องกันบั๊ก Google Lens
                 local found_paths=$(su -c "find /storage/emulated/0 -maxdepth 6 -type f -name 'ping_${uname}.txt' 2>/dev/null")
                 local final_path=""
                 for f in $found_paths; do
@@ -415,7 +410,8 @@ start_auto_rejoin() {
             fi
 
             if [[ -n "${ping_paths[$i]}" ]]; then
-                last_ping=$(su -c "cat '${ping_paths[$i]}'" 2>/dev/null)
+                # อ่านค่าและใช้เครื่องดูดฝุ่น (tr -d) ลบอักขระขยะ/การปัดบรรทัดทิ้งให้เกลี้ยง
+                last_ping=$(su -c "cat '${ping_paths[$i]}'" 2>/dev/null | tr -d '\r\n ')
                 
                 if [[ "$last_ping" == "DEAD" ]]; then
                     statuses[$i]="หลุด! (Error Msg)"
@@ -432,6 +428,19 @@ start_auto_rejoin() {
                     else
                         statuses[$i]="ออนไลน์ (${diff}s ก่อน)"
                         colors[$i]="$C_GREEN"
+                    fi
+                else
+                    # ถ้าอ่านค่ามาแล้วแปลกๆ (เช่น สคริปต์เพิ่งสร้างไฟล์แต่ยังไม่ทันใส่ตัวเลข)
+                    launched_at=${launch_times[$i]:-0}
+                    wait_time=$((current_time - launched_at))
+                    if [[ "$wait_time" -gt 150 ]]; then 
+                        statuses[$i]="จอค้าง! (Timeout)"
+                        colors[$i]="$C_RED"
+                        draw_dashboard
+                        relaunch_pkg "$pkg" "$i"
+                    else
+                        statuses[$i]="รอข้อมูล (${wait_time}s)"
+                        colors[$i]="$C_YELLOW"
                     fi
                 fi
             else
