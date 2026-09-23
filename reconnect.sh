@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# กำหนดค่าสี (ใช้ \033 แทน \e เพื่อป้องกันบั๊กหน้าจอ)
+# กำหนดค่าสี (\033 แทน \e ป้องกันจอรวน)
 # ==========================================
 C_CYAN='\033[36m'
 C_GREEN='\033[32m'
@@ -21,13 +21,13 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   \vert{}_\vert{} \vert{}_\vert{}\vert{}_\vert{} \vert{}_\vert{}_\___\vert{}/ \___/___\vert{}_\vert{}\_\vert{}${C_RESET}"
     echo -e "${C_CYAN}                     \vert{}__/${C_RESET}"
-    echo -e "${C_GREEN}              TOOL v7.6${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v7.7 (Ultimate Bug Fixes)${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# ฟังก์ชันรันคำสั่ง Root แบบปลอดภัยขั้นสุด (< /dev/null ป้องกันจอรวน)
+# ฟังก์ชันรันคำสั่ง Root แบบปลอดภัยขั้นสุด
 # ==========================================
 safe_su() {
     su -c "$1" < /dev/null > /dev/null 2>&1
@@ -70,7 +70,7 @@ setup_webhook() {
     echo -e "${C_YELLOW}🔍 กำลังค้นหาโฟลเดอร์ Autoexec ทั้งหมดในเครื่อง...${C_RESET}"
     autoexec_folders=$(find /storage/emulated/0 -maxdepth 4 -type d -iname "Autoexec" 2>/dev/null)
 
-    if [ -z "$autoexec_folders" ]; then
+    if [[ -z "$autoexec_folders" ]]; then
         echo -e "${C_RED}❌ ไม่พบโฟลเดอร์ Autoexec ในเครื่อง${C_RESET}"
         sleep 3
         return
@@ -90,6 +90,7 @@ local webhookUrl = "$webhook_url"
 local playerName = player and player.Name or "Unknown"
 local displayName = player and player.DisplayName or "Unknown"
 local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
+local isDisconnected = false
 
 local function sendWebhook(title, desc, colorHex)
     if webhookUrl == "" or not httpRequest then return end
@@ -107,12 +108,18 @@ local function sendWebhook(title, desc, colorHex)
 end
 
 sendWebhook("✅ เข้าร่วมเซิร์ฟเวอร์สำเร็จ!", "**JobId:** \`" .. tostring(game.JobId) .. "\`", 65280)
+
 GuiService.ErrorMessageChanged:Connect(function(errorMsg)
-    if errorMsg and errorMsg ~= "" then sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) end
+    if errorMsg and errorMsg ~= "" then 
+        isDisconnected = true
+        pcall(function() writefile("ping_" .. playerName .. ".txt", "DEAD") end)
+        sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) 
+    end
 end)
 
 task.spawn(function()
     while task.wait(10) do
+        if isDisconnected then break end
         pcall(function() writefile("ping_" .. playerName .. ".txt", tostring(os.time())) end)
     end
 end)
@@ -131,7 +138,7 @@ start_auto_setup() {
     show_header
     echo -e "${C_CYAN}--- Automatic Setup (Detect Packages & Bind Accounts) ---${C_RESET}"
     
-    if [ -s "$CONFIG_FILE" ]; then
+    if [[ -s "$CONFIG_FILE" ]]; then
         echo -e "${C_YELLOW}⚠️ พบข้อมูลหน้าจอและบัญชีที่เคยบันทึกไว้แล้ว!${C_RESET}"
         read -p "❓ ต้องการเคลียร์ข้อมูลและตั้งค่าใหม่หรือไม่? (y/n) [กด Enter เพื่อยกเลิก]: " confirm_reset
         if [[ "$confirm_reset" != "y" && "$confirm_reset" != "Y" ]]; then
@@ -145,21 +152,21 @@ start_auto_setup() {
     
     pm list packages | grep -i "roblox.clien" | cut -f 2 -d ':' > "temp_pkg.txt"
     stty onlcr sane 2>/dev/null
-    screen_count=$(wc -l < "temp_pkg.txt")
+    screen_count=$(wc -l < "temp_pkg.txt" | tr -d ' ')
 
-    if [ "$screen_count" -eq 0 ]; then
+    if [[ "$screen_count" -eq 0 ]]; then
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
         read -p "🔍 กรุณาพิมพ์ชื่อแอป (หรือคำย่อ เช่น roblox, arceus) เพื่อค้นหาใหม่: " custom_pkg
         
-        if [ -n "$custom_pkg" ]; then
+        if [[ -n "$custom_pkg" ]]; then
             echo -e "${C_YELLOW}🔄 กำลังค้นหาแพ็กเกจที่มีคำว่า '$custom_pkg'...${C_RESET}"
             pm list packages | grep -i "$custom_pkg" | cut -f 2 -d ':' > "temp_pkg.txt"
             stty onlcr sane 2>/dev/null
-            screen_count=$(wc -l < "temp_pkg.txt")
+            screen_count=$(wc -l < "temp_pkg.txt" | tr -d ' ')
         fi
     fi
 
-    if [ "$screen_count" -gt 0 ]; then
+    if [[ "$screen_count" -gt 0 ]]; then
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
         echo -e "${C_YELLOW}⚠️ เพื่อให้ระบบ Rejoin ทำงานได้ กรุณาใส่ Username ให้ตรงกับแต่ละจอ${C_RESET}"
         echo ""
@@ -223,7 +230,7 @@ relaunch_pkg() {
     colors[$idx]="$C_CYAN"
     draw_dashboard
     cache_path="/storage/emulated/0/Android/data/$p/cache"
-    if [ -d "$cache_path" ]; then safe_su "rm -rf $cache_path/*"; fi
+    if [[ -d "$cache_path" ]]; then safe_su "rm -rf $cache_path/*"; fi
 
     statuses[$idx]="กำลังปิด (Kill)"
     colors[$idx]="$C_RED"
@@ -250,7 +257,7 @@ relaunch_pkg() {
     safe_su "am start -f 0x10000000 -a android.intent.action.VIEW -d \"roblox://placeId=$place_id\" -p \"$p\""
     
     launch_times[$idx]=$(date +%s)
-    if [ -n "${ping_paths[$idx]}" ] && [ -f "${ping_paths[$idx]}" ]; then
+    if [[ -n "${ping_paths[$idx]}" && -f "${ping_paths[$idx]}" ]]; then
         safe_su "rm \"${ping_paths[$idx]}\""
     fi
     ping_paths[$idx]=""
@@ -265,7 +272,7 @@ relaunch_pkg() {
 start_auto_rejoin() {
     clear
     show_header
-    if [ ! -f "$CONFIG_FILE" ] \vert{}\vert{} [ ! -s "$CONFIG_FILE" ]; then
+    if [[ ! -f "$CONFIG_FILE" \vert{}\vert{} ! -s "$CONFIG_FILE" ]]; then
         echo -e "${C_RED}❌ ไม่พบข้อมูลจอ! กรุณาไปทำ Auto Setup (เมนู 2) ก่อน${C_RESET}"
         sleep 3
         return
@@ -308,12 +315,12 @@ start_auto_rejoin() {
             pkg="${pkgs[$i]}"
             uname="${unames[$i]}"
             
-            if [ -z "${ping_paths[$i]}" ] || [ ! -f "${ping_paths[$i]}" ]; then
+            if [[ -z "${ping_paths[$i]}" || ! -f "${ping_paths[$i]}" ]]; then
                 found_path=$(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${uname}.txt" 2>/dev/null | head -n 1)
-                if [ -n "$found_path" ]; then ping_paths[$i]="$found_path"; fi
+                if [[ -n "$found_path" ]]; then ping_paths[$i]="$found_path"; fi
             fi
 
-            if [ -n "${ping_paths[$i]}" ] && [ -f "${ping_paths[$i]}" ]; then
+            if [[ -n "${ping_paths[$i]}" && -f "${ping_paths[$i]}" ]]; then
                 last_ping=$(cat "${ping_paths[$i]}" 2>/dev/null)
                 
                 if [[ "$last_ping" == "DEAD" ]]; then
@@ -323,7 +330,7 @@ start_auto_rejoin() {
                     relaunch_pkg "$pkg" "$i"
                 elif [[ "$last_ping" =~ ^[0-9]+$ ]]; then
                     diff=$((current_time - last_ping))
-                    if [ $diff -gt 60 ]; then
+                    if [[ "$diff" -gt 60 ]]; then
                         statuses[$i]="หลุด! (Dead > 60s)"
                         colors[$i]="$C_RED"
                         draw_dashboard
@@ -336,7 +343,7 @@ start_auto_rejoin() {
             else
                 launched_at=${launch_times[$i]:-0}
                 wait_time=$((current_time - launched_at))
-                if [ $wait_time -gt 150 ]; then 
+                if [[ "$wait_time" -gt 150 ]]; then 
                     statuses[$i]="จอค้าง! (Timeout)"
                     colors[$i]="$C_RED"
                     draw_dashboard
