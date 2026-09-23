@@ -12,9 +12,11 @@ C_RESET='\033[0m'
 
 CONFIG_FILE="roblox_accounts.cfg"
 WEBHOOK_FILE="webhook.cfg"
+COOKIE_FILE="roblox_cookies.cfg"
 LUA_FILENAME="status_check.lua"
 TEMP_LUA="/storage/emulated/0/temp_status_check.lua"
 TEMP_FOLDERS="/storage/emulated/0/temp_autoexec_folders.txt"
+DL_COOKIE_FILE="/storage/emulated/0/Download/cookie.txt"
 
 # ล้างไฟล์ตั้งค่าที่พัง
 if [[ -f "$CONFIG_FILE" ]]; then
@@ -34,7 +36,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v8.7 (Status Sync Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v9.2 (Smart Cookie Binding) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -145,6 +147,163 @@ EOF
 }
 
 # ==========================================
+# เมนู 5: รันล็อคอินเข้าหน้าแรก (ไม่เข้าแมพ)
+# ==========================================
+execute_cookie_login() {
+    clear
+    show_header
+    echo -e "${C_CYAN}--- Execute Cookie Login (Home Screen) ---${C_RESET}"
+    
+    if [[ ! -s "$COOKIE_FILE" ]]; then
+        echo -e "${C_RED}❌ ไม่พบข้อมูล Cookie! กรุณาไปทำเมนู 4 เพื่อตั้งค่าก่อน${C_RESET}"
+        sleep 3
+        return
+    fi
+
+    echo -e "${C_YELLOW}🚀 กำลังเริ่มกระบวนการล็อคอินเข้าหน้าแรกทีละจอ...${C_RESET}"
+    
+    while read -r line; do
+        if [[ -z "$line" ]]; then continue; fi
+        
+        local pkg=$(echo "$line" | cut -d' ' -f1)
+        local active_cookie=$(echo "$line" | cut -d' ' -f2-)
+        
+        if [[ -n "$pkg" && -n "$active_cookie" ]]; then
+            echo -e "\n${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}${C_RESET}"
+            
+            safe_su "am force-stop $pkg"
+            sleep 2
+            
+            echo -e "${C_YELLOW}🔄 กำลังขอ Ticket จากเซิร์ฟเวอร์ Roblox...${C_RESET}"
+            local csrf=$(curl -s -I -X POST "https://auth.roblox.com/v2/logout" -H "Cookie: .ROBLOSECURITY=$active_cookie" | grep -i 'x-csrf-token:' | awk '{print $2}' | tr -d '\r\n')
+            
+            if [[ -n "$csrf" ]]; then
+                local ticket=$(curl -s -I -X POST "https://auth.roblox.com/v1/authentication-ticket" -H "Cookie: .ROBLOSECURITY=$active_cookie" -H "x-csrf-token: $csrf" -H "Referer: https://www.roblox.com" -H "Content-Type: application/json" | grep -i 'rbx-authentication-ticket:' | awk '{print $2}' | tr -d '\r\n')
+                
+                if [[ -n "$ticket" ]]; then
+                    echo -e "${C_GREEN}✅ ได้รับ Ticket สำเร็จ! กำลังส่งเข้าหน้าแรก...${C_RESET}"
+                    safe_su "am start -a android.intent.action.VIEW -d \"roblox://?ticket=$ticket\" -p \"$pkg\""
+                else
+                    echo -e "${C_RED}❌ ขอ Ticket ไม่สำเร็จ (Cookie อาจหมดอายุหรือผิดพลาด)${C_RESET}"
+                fi
+            else
+                echo -e "${C_RED}❌ ขอ CSRF Token ไม่สำเร็จ (Cookie ไม่ถูกต้อง)${C_RESET}"
+            fi
+            
+            echo -e "${C_YELLOW}⏳ รอ 5 วินาทีเพื่อดำเนินการจอถัดไป...${C_RESET}"
+            sleep 5
+        fi
+    done < "$COOKIE_FILE"
+    
+    echo -e "\n${C_GREEN}🎉 กระบวนการล็อคอินเสร็จสิ้นทั้งหมดแล้ว!${C_RESET}"
+    read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
+}
+
+# ==========================================
+# เมนู 4: ระบบใส่ Cookie (ผูกบัญชีอัตโนมัติ)
+# ==========================================
+setup_cookie() {
+    clear
+    show_header
+    echo -e "${C_CYAN}--- Setup Cookie & Auto Bind Accounts ---${C_RESET}"
+    
+    > "temp_pkg.txt"
+    screen_count=0
+    for line in $(pm list packages); do
+        if [[ "${line,,}" == *roblox.clien* ]]; then
+            pkg_name="${line#package:}"
+            echo "$pkg_name" >> "temp_pkg.txt"
+            ((screen_count++))
+        fi
+    done
+    stty onlcr sane 2>/dev/null
+
+    if [[ "$screen_count" -eq 0 ]]; then
+        echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
+        rm "temp_pkg.txt" 2>/dev/null
+        sleep 2
+        return
+    fi
+
+    echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอในเครื่องนี้!${C_RESET}"
+
+    if [[ ! -f "$DL_COOKIE_FILE" ]]; then
+        echo -e "${C_YELLOW}⚠️ ไม่พบไฟล์ cookie.txt${C_RESET}"
+        echo -e "${C_GREEN}สร้างไฟล์ให้ใหม่แล้วที่: Download/cookie.txt${C_RESET}"
+        echo "# วาง Cookie ของคุณไว้ที่นี่ (1 บรรทัดต่อ 1 จอ)" > "$DL_COOKIE_FILE"
+    else
+        echo -e "${C_CYAN}📂 พบไฟล์ cookie.txt ในโฟลเดอร์ Download แล้ว${C_RESET}"
+    fi
+
+    echo -e "\n${C_YELLOW}💡 กรุณาเปิดแอปจัดการไฟล์ (File Manager) ไปที่โฟลเดอร์ Download${C_RESET}"
+    echo -e "${C_YELLOW}💡 เปิดไฟล์ cookie.txt แล้ววาง Cookie ลงไปให้เรียบร้อย (แล้วกดเซฟ)${C_RESET}"
+    echo -e "${C_RED}⚠️ เมื่อใส่เสร็จแล้ว ให้กลับมาที่นี่แล้วกด Enter เพื่อยืนยัน${C_RESET}\n"
+
+    read -p "กด Enter เพื่อให้ระบบเริ่มดึงข้อมูลจากไฟล์..."
+
+    local found_pkgs=()
+    while read -r line; do 
+        if [[ -n "$line" ]]; then found_pkgs+=("$line"); fi
+    done < "temp_pkg.txt"
+    
+    local found_cookies=()
+    if [[ -f "$DL_COOKIE_FILE" ]]; then
+        while read -r line; do 
+            if [[ "$line" == \#* ]]; then continue; fi
+            line="${line//[$'\t\r\n ']/}"
+            if [[ -n "$line" ]]; then found_cookies+=("$line"); fi
+        done < "$DL_COOKIE_FILE"
+    fi
+
+    local cookie_count=${#found_cookies[@]}
+    
+    if [[ "$cookie_count" -eq 0 ]]; then
+        echo -e "\n${C_RED}❌ ไม่พบ Cookie ในไฟล์ หรือไฟล์ว่างเปล่า!${C_RESET}"
+        rm "temp_pkg.txt" 2>/dev/null
+        sleep 3
+        return
+    fi
+
+    echo -e "\n${C_CYAN}📌 อ่าน Cookie จากไฟล์ได้ทั้งหมด: $cookie_count ไอดี${C_RESET}"
+    echo -e "${C_YELLOW}⏳ กำลังตรวจสอบ Cookie และดึง Username อัตโนมัติจาก Roblox...${C_RESET}\n"
+    
+    > "$COOKIE_FILE"
+    > "$CONFIG_FILE" # รีเซ็ตไฟล์ผูกบัญชีเดิม
+    local assigned=0
+    
+    for i in "${!found_pkgs[@]}"; do
+        local pkg="${found_pkgs[$i]}"
+        pkg="${pkg//[$'\t\r\n ']/}"
+        
+        if [[ $i -lt$cookie_count ]]; then
+            local cookie_val="${found_cookies[$i]}"
+            
+            # ยิง API เพื่อดึง Username จาก Cookie
+            local api_res=$(curl -s -X GET "https://users.roblox.com/v1/users/authenticated" -H "Cookie: .ROBLOSECURITY=$cookie_val")
+            local uname=$(echo "$api_res" | grep -o '"name":"[^"]*' | head -n 1 | awk -F'"' '{print $4}')
+            
+            if [[ -z "$uname" ]]; then
+                echo -e "${C_RED}❌ จอ $pkg: Cookie ไม่ถูกต้อง หรือหมดอายุ! (ตั้งค่าเป็น Unknown)${C_RESET}"
+                uname="Unknown"
+            else
+                echo -e "${C_GREEN}✔️ จอ $pkg ผูกกับ Username: 👤 $uname${C_RESET}"
+            fi
+            
+            # บันทึกทั้ง Cookie และตั้งค่า Username อัตโนมัติ
+            echo "$pkg $cookie_val" >> "$COOKIE_FILE"
+            echo "$pkg:$uname" >> "$CONFIG_FILE"
+            ((assigned++))
+        fi
+    done
+    
+    rm "temp_pkg.txt" 2>/dev/null
+    
+    echo -e "\n${C_GREEN}🎉 บันทึก Cookie และผูกบัญชีสำเร็จ! (ดำเนินการให้ $assigned จอ)${C_RESET}"
+    echo -e "${C_CYAN}💡 คุณสามารถกดใช้งาน Start Auto Rejoin ได้เลยทันที!${C_RESET}"
+    sleep 4
+}
+
+# ==========================================
 # เมนู 3: จัดการ Webhook
 # ==========================================
 setup_webhook() {
@@ -178,12 +337,12 @@ setup_webhook() {
 }
 
 # ==========================================
-# เมนู 2: ระบบค้นหาจออัตโนมัติ
+# เมนู 2: ระบบค้นหาจออัตโนมัติ (Manual Bind)
 # ==========================================
 start_auto_setup() {
     clear
     show_header
-    echo -e "${C_CYAN}--- Automatic Setup ---${C_RESET}"
+    echo -e "${C_CYAN}--- Automatic Setup (Manual Bind) ---${C_RESET}"
     
     if [[ -s "$CONFIG_FILE" ]]; then
         echo -e "${C_YELLOW}⚠️ พบข้อมูลเดิมที่เคยบันทึกไว้!${C_RESET}"
@@ -259,7 +418,7 @@ start_auto_setup() {
 }
 
 # ==========================================
-# ระบบวาดตาราง Dashboard (Box UI)
+# ระบบวาดตาราง Dashboard 
 # ==========================================
 draw_dashboard() {
     stty onlcr sane 2>/dev/null 
@@ -285,7 +444,7 @@ draw_dashboard() {
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอ
+# ฟังก์ชันเปิดจอเข้าแมพ (สำหรับเมนู 1)
 # ==========================================
 relaunch_pkg() {
     local p="$1"
@@ -315,11 +474,34 @@ relaunch_pkg() {
         draw_dashboard
         sleep 1
     done
+
+    local active_cookie=""
+    if [[ -f "$COOKIE_FILE" ]]; then
+        active_cookie=$(grep "^$p " "$COOKIE_FILE" 2>/dev/null | cut -d' ' -f2-)
+    fi
+
+    local ticket=""
+    if [[ -n "$active_cookie" ]]; then
+        statuses[$idx]="ยืนยัน Cookie..."
+        colors[$idx]="$C_CYAN"
+        draw_dashboard
+        
+        local csrf=$(curl -s -I -X POST "https://auth.roblox.com/v2/logout" -H "Cookie: .ROBLOSECURITY=$active_cookie" | grep -i 'x-csrf-token:' | awk '{print $2}' | tr -d '\r\n')
+        
+        if [[ -n "$csrf" ]]; then
+            ticket=$(curl -s -I -X POST "https://auth.roblox.com/v1/authentication-ticket" -H "Cookie: .ROBLOSECURITY=$active_cookie" -H "x-csrf-token: $csrf" -H "Referer: https://www.roblox.com" -H "Content-Type: application/json" | grep -i 'rbx-authentication-ticket:' | awk '{print $2}' | tr -d '\r\n')
+        fi
+    fi
     
     statuses[$idx]="ส่งเข้าแมพ (Map)"
+    colors[$idx]="$C_GREEN"
     draw_dashboard
     
-    safe_su "am start -f 0x10000000 -a android.intent.action.VIEW -d \"roblox://placeId=$place_id\" -p \"$p\""
+    if [[ -n "$ticket" ]]; then
+        safe_su "am start -a android.intent.action.VIEW -d \"roblox://placeId=$place_id&ticket=$ticket\" -p \"$p\""
+    else
+        safe_su "am start -a android.intent.action.VIEW -d \"roblox://placeId=$place_id\" -p \"$p\""
+    fi
     
     launch_times[$idx]=$(date +%s)
     if [[ -n "${ping_paths[$idx]}" ]]; then
@@ -339,12 +521,11 @@ start_auto_rejoin() {
     show_header
     
     if [[ ! -s "$CONFIG_FILE" ]]; then
-        echo -e "${C_RED}❌ ไม่พบข้อมูลจอ! กรุณาไปทำ Auto Setup (เมนู 2) ก่อน${C_RESET}"
+        echo -e "${C_RED}❌ ไม่พบข้อมูลจอ! กรุณาไปทำเมนู 2 หรือ 4 เพื่อตั้งค่าก่อน${C_RESET}"
         sleep 3
         return
     fi
 
-    # ฝังสคริปต์อัตโนมัติ
     inject_lua_script
 
     stty onlcr sane 2>/dev/null
@@ -410,7 +591,6 @@ start_auto_rejoin() {
             fi
 
             if [[ -n "${ping_paths[$i]}" ]]; then
-                # อ่านค่าและใช้เครื่องดูดฝุ่น (tr -d) ลบอักขระขยะ/การปัดบรรทัดทิ้งให้เกลี้ยง
                 last_ping=$(su -c "cat '${ping_paths[$i]}'" 2>/dev/null | tr -d '\r\n ')
                 
                 if [[ "$last_ping" == "DEAD" ]]; then
@@ -430,7 +610,6 @@ start_auto_rejoin() {
                         colors[$i]="$C_GREEN"
                     fi
                 else
-                    # ถ้าอ่านค่ามาแล้วแปลกๆ (เช่น สคริปต์เพิ่งสร้างไฟล์แต่ยังไม่ทันใส่ตัวเลข)
                     launched_at=${launch_times[$i]:-0}
                     wait_time=$((current_time - launched_at))
                     if [[ "$wait_time" -gt 150 ]]; then 
@@ -474,15 +653,17 @@ trap 'tput cnorm; clear; stty onlcr sane 2>/dev/null; exit' INT
 check_root
 
 # ==========================================
-# เมนูหลัก (หน้าต่าง Box UI)
+# เมนูหลัก 
 # ==========================================
 while true; do
     clear
     show_header
     echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Start Auto Rejoin   ${C_YELLOW}Smart System${C_RESET}                   ${C_CYAN}│${C_RESET}"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Detect & Bind${C_RESET}                  ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Manual Name Bind${C_RESET}               ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}3${C_RESET}  Manage Webhook      ${C_YELLOW}Discord Autoexec${C_RESET}               ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}4${C_RESET}  Setup Cookie Login  ${C_YELLOW}Import & Auto Bind${C_RESET}             ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}5${C_RESET}  Run Cookie Login    ${C_YELLOW}Login to Home Screen${C_RESET}           ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}                                                        ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}0${C_RESET}  Exit                ${C_YELLOW}Close Tool${C_RESET}                     ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}└────────────────────────────────────────────────────────┘${C_RESET}"
@@ -492,6 +673,8 @@ while true; do
         1) start_auto_rejoin ;;
         2) start_auto_setup ;;
         3) setup_webhook ;;
+        4) setup_cookie ;;
+        5) execute_cookie_login ;;
         0) clear; tput cnorm; stty onlcr sane 2>/dev/null; exit 0 ;;
         *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
     esac
