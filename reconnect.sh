@@ -18,6 +18,9 @@ TEMP_LUA="/storage/emulated/0/temp_status_check.lua"
 TEMP_FOLDERS="/storage/emulated/0/temp_autoexec_folders.txt"
 DL_COOKIE_FILE="/storage/emulated/0/Download/cookie.txt"
 
+# ค่าเบราว์เซอร์ปลอมเพื่อหลบหลีกการบล็อกของ Roblox
+UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
 # ล้างไฟล์ตั้งค่าที่พัง
 if [[ -f "$CONFIG_FILE" ]]; then
     check_bad=$(grep "vert" "$CONFIG_FILE" 2>/dev/null)
@@ -36,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v9.4 (Custom Search Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}       v9.5 (Anti-Bot Bypass) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -175,16 +178,26 @@ execute_cookie_login() {
             sleep 2
             
             echo -e "${C_YELLOW}🔄 กำลังขอ Ticket จากเซิร์ฟเวอร์ Roblox...${C_RESET}"
-            local csrf=$(curl -s -I -X POST "https://auth.roblox.com/v2/logout" -H "Cookie: .ROBLOSECURITY=$active_cookie" | grep -i 'x-csrf-token:' | awk '{print $2}' | tr -d '\r\n')
+            # เพิ่ม -k และ User-Agent
+            local csrf=$(curl -s -k -L -I -X POST "https://auth.roblox.com/v2/logout" \
+                -H "Cookie: .ROBLOSECURITY=$active_cookie" \
+                -H "User-Agent: $UA" \
+                | grep -i 'x-csrf-token:' | awk '{print $2}' | tr -d '\r\n')
             
             if [[ -n "$csrf" ]]; then
-                local ticket=$(curl -s -I -X POST "https://auth.roblox.com/v1/authentication-ticket" -H "Cookie: .ROBLOSECURITY=$active_cookie" -H "x-csrf-token: $csrf" -H "Referer: https://www.roblox.com" -H "Content-Type: application/json" | grep -i 'rbx-authentication-ticket:' | awk '{print $2}' | tr -d '\r\n')
+                local ticket=$(curl -s -k -L -I -X POST "https://auth.roblox.com/v1/authentication-ticket" \
+                    -H "Cookie: .ROBLOSECURITY=$active_cookie" \
+                    -H "x-csrf-token: $csrf" \
+                    -H "Referer: https://www.roblox.com" \
+                    -H "Content-Type: application/json" \
+                    -H "User-Agent: $UA" \
+                    | grep -i 'rbx-authentication-ticket:' | awk '{print $2}' | tr -d '\r\n')
                 
                 if [[ -n "$ticket" ]]; then
                     echo -e "${C_GREEN}✅ ได้รับ Ticket สำเร็จ! กำลังส่งเข้าหน้าแรก...${C_RESET}"
                     safe_su "am start -a android.intent.action.VIEW -d \"roblox://?ticket=$ticket\" -p \"$pkg\""
                 else
-                    echo -e "${C_RED}❌ ขอ Ticket ไม่สำเร็จ (Cookie อาจหมดอายุหรือผิดพลาด)${C_RESET}"
+                    echo -e "${C_RED}❌ ขอ Ticket ไม่สำเร็จ (Cookie อาจหมดอายุหรือติด IP Lock)${C_RESET}"
                 fi
             else
                 echo -e "${C_RED}❌ ขอ CSRF Token ไม่สำเร็จ (Cookie ไม่ถูกต้อง)${C_RESET}"
@@ -200,7 +213,7 @@ execute_cookie_login() {
 }
 
 # ==========================================
-# เมนู 4: ระบบใส่ Cookie (พร้อมระบบค้นหาแอป)
+# เมนู 4: ระบบใส่ Cookie (ผูกบัญชีอัตโนมัติ)
 # ==========================================
 setup_cookie() {
     clear
@@ -218,10 +231,9 @@ setup_cookie() {
     done
     stty onlcr sane 2>/dev/null
 
-    # 📌 เพิ่มระบบค้นหาชื่อแอปเอง ถ้าไม่เจอ roblox.clien
     if (( screen_count == 0 )); then
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
-        read -p "🔍 พิมพ์ชื่อแอป (เช่น roblox, arceus, free) เพื่อหาใหม่: " custom_pkg
+        read -p "🔍 พิมพ์ชื่อแอป (เช่น roblox, arceus) เพื่อหาใหม่: " custom_pkg
         
         if [[ -n "$custom_pkg" ]]; then
             echo -e "${C_YELLOW}🔄 กำลังค้นหาคำว่า '$custom_pkg'...${C_RESET}"
@@ -237,7 +249,6 @@ setup_cookie() {
         fi
     fi
 
-    # เช็คอีกรอบ ถ้ายังหาไม่เจออีกให้เด้งกลับ
     if (( screen_count == 0 )); then
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย ยกเลิกการทำรายการ${C_RESET}"
         rm "temp_pkg.txt" 2>/dev/null
@@ -270,7 +281,8 @@ setup_cookie() {
     if [[ -f "$DL_COOKIE_FILE" ]]; then
         while read -r line; do 
             if [[ "$line" == \#* ]]; then continue; fi
-            line="${line//[$'\t\r\n ']/}"
+            # ลบตัวอักษรซ่อนเร้น (BOM) และช่องว่าง
+            line=$(echo "$line" | sed 's/^\xef\xbb\xbf//' | tr -d '\r\n\t ')
             if [[ -n "$line" ]]; then found_cookies+=("$line"); fi
         done < "$DL_COOKIE_FILE"
     fi
@@ -298,7 +310,11 @@ setup_cookie() {
         if (( i < cookie_count )); then
             local cookie_val="${found_cookies[$i]}"
             
-            local api_res=$(curl -s -X GET "https://users.roblox.com/v1/users/authenticated" -H "Cookie: .ROBLOSECURITY=$cookie_val")
+            # เพิ่ม -k และ User-Agent เพื่อหลบการบล็อก
+            local api_res=$(curl -s -k -L -X GET "https://users.roblox.com/v1/users/authenticated" \
+                -H "Cookie: .ROBLOSECURITY=$cookie_val" \
+                -H "User-Agent: $UA")
+                
             local uname=$(echo "$api_res" | grep -o '"name":"[^"]*' | head -n 1 | awk -F'"' '{print $4}')
             
             if [[ -z "$uname" ]]; then
@@ -504,10 +520,19 @@ relaunch_pkg() {
         colors[$idx]="$C_CYAN"
         draw_dashboard
         
-        local csrf=$(curl -s -I -X POST "https://auth.roblox.com/v2/logout" -H "Cookie: .ROBLOSECURITY=$active_cookie" | grep -i 'x-csrf-token:' | awk '{print $2}' | tr -d '\r\n')
+        local csrf=$(curl -s -k -L -I -X POST "https://auth.roblox.com/v2/logout" \
+            -H "Cookie: .ROBLOSECURITY=$active_cookie" \
+            -H "User-Agent: $UA" \
+            | grep -i 'x-csrf-token:' | awk '{print $2}' | tr -d '\r\n')
         
         if [[ -n "$csrf" ]]; then
-            ticket=$(curl -s -I -X POST "https://auth.roblox.com/v1/authentication-ticket" -H "Cookie: .ROBLOSECURITY=$active_cookie" -H "x-csrf-token: $csrf" -H "Referer: https://www.roblox.com" -H "Content-Type: application/json" | grep -i 'rbx-authentication-ticket:' | awk '{print $2}' | tr -d '\r\n')
+            ticket=$(curl -s -k -L -I -X POST "https://auth.roblox.com/v1/authentication-ticket" \
+                -H "Cookie: .ROBLOSECURITY=$active_cookie" \
+                -H "x-csrf-token: $csrf" \
+                -H "Referer: https://www.roblox.com" \
+                -H "Content-Type: application/json" \
+                -H "User-Agent: $UA" \
+                | grep -i 'rbx-authentication-ticket:' | awk '{print $2}' | tr -d '\r\n')
         fi
     fi
     
