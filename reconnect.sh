@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}       v9.5 (Anti-Bot Bypass) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v9.6 (Deep Scan Auto Bind) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -158,7 +158,7 @@ execute_cookie_login() {
     echo -e "${C_CYAN}--- Execute Cookie Login (Home Screen) ---${C_RESET}"
     
     if [[ ! -s "$COOKIE_FILE" ]]; then
-        echo -e "${C_RED}❌ ไม่พบข้อมูล Cookie! กรุณาไปทำเมนู 4 เพื่อตั้งค่าก่อน${C_RESET}"
+        echo -e "${C_RED}❌ ไม่พบข้อมูล Cookie! กรุณาไปทำเมนู 4 หรือเมนู 2 เพื่อตั้งค่าก่อน${C_RESET}"
         sleep 3
         return
     fi
@@ -178,7 +178,6 @@ execute_cookie_login() {
             sleep 2
             
             echo -e "${C_YELLOW}🔄 กำลังขอ Ticket จากเซิร์ฟเวอร์ Roblox...${C_RESET}"
-            # เพิ่ม -k และ User-Agent
             local csrf=$(curl -s -k -L -I -X POST "https://auth.roblox.com/v2/logout" \
                 -H "Cookie: .ROBLOSECURITY=$active_cookie" \
                 -H "User-Agent: $UA" \
@@ -213,7 +212,7 @@ execute_cookie_login() {
 }
 
 # ==========================================
-# เมนู 4: ระบบใส่ Cookie (ผูกบัญชีอัตโนมัติ)
+# เมนู 4: ระบบใส่ Cookie (จากไฟล์)
 # ==========================================
 setup_cookie() {
     clear
@@ -266,8 +265,8 @@ setup_cookie() {
         echo -e "${C_CYAN}📂 พบไฟล์ cookie.txt ในโฟลเดอร์ Download แล้ว${C_RESET}"
     fi
 
-    echo -e "\n${C_YELLOW}💡 กรุณาเปิดแอปจัดการไฟล์ (File Manager) ไปที่โฟลเดอร์ Download${C_RESET}"
-    echo -e "${C_YELLOW}💡 เปิดไฟล์ cookie.txt แล้ววาง Cookie ลงไปให้เรียบร้อย (แล้วกดเซฟ)${C_RESET}"
+    echo -e "\n${C_YELLOW}💡 กรุณาเปิดแอปจัดการไฟล์ ไปที่โฟลเดอร์ Download${C_RESET}"
+    echo -e "${C_YELLOW}💡 เปิดไฟล์ cookie.txt แล้ววาง Cookie ลงไปให้เรียบร้อย${C_RESET}"
     echo -e "${C_RED}⚠️ เมื่อใส่เสร็จแล้ว ให้กลับมาที่นี่แล้วกด Enter เพื่อยืนยัน${C_RESET}\n"
 
     read -p "กด Enter เพื่อให้ระบบเริ่มดึงข้อมูลจากไฟล์..."
@@ -281,7 +280,6 @@ setup_cookie() {
     if [[ -f "$DL_COOKIE_FILE" ]]; then
         while read -r line; do 
             if [[ "$line" == \#* ]]; then continue; fi
-            # ลบตัวอักษรซ่อนเร้น (BOM) และช่องว่าง
             line=$(echo "$line" | sed 's/^\xef\xbb\xbf//' | tr -d '\r\n\t ')
             if [[ -n "$line" ]]; then found_cookies+=("$line"); fi
         done < "$DL_COOKIE_FILE"
@@ -310,7 +308,6 @@ setup_cookie() {
         if (( i < cookie_count )); then
             local cookie_val="${found_cookies[$i]}"
             
-            # เพิ่ม -k และ User-Agent เพื่อหลบการบล็อก
             local api_res=$(curl -s -k -L -X GET "https://users.roblox.com/v1/users/authenticated" \
                 -H "Cookie: .ROBLOSECURITY=$cookie_val" \
                 -H "User-Agent: $UA")
@@ -318,7 +315,7 @@ setup_cookie() {
             local uname=$(echo "$api_res" | grep -o '"name":"[^"]*' | head -n 1 | awk -F'"' '{print $4}')
             
             if [[ -z "$uname" ]]; then
-                echo -e "${C_RED}❌ จอ $pkg: Cookie ไม่ถูกต้อง หรือหมดอายุ! (ตั้งค่าเป็น Unknown)${C_RESET}"
+                echo -e "${C_RED}❌ จอ $pkg: Cookie หมดอายุ หรือติด IP Lock! (ตั้งเป็น Unknown)${C_RESET}"
                 uname="Unknown"
             else
                 echo -e "${C_GREEN}✔️ จอ $pkg ผูกกับ Username: 👤 $uname${C_RESET}"
@@ -333,7 +330,6 @@ setup_cookie() {
     rm "temp_pkg.txt" 2>/dev/null
     
     echo -e "\n${C_GREEN}🎉 บันทึก Cookie และผูกบัญชีสำเร็จ! (ดำเนินการให้ $assigned จอ)${C_RESET}"
-    echo -e "${C_CYAN}💡 คุณสามารถกดใช้งาน Start Auto Rejoin หรือเมนู 5 ได้เลยทันที!${C_RESET}"
     sleep 4
 }
 
@@ -371,12 +367,12 @@ setup_webhook() {
 }
 
 # ==========================================
-# เมนู 2: ระบบค้นหาจออัตโนมัติ (Manual Bind)
+# เมนู 2: ระบบสแกนจอและดึงชื่ออัตโนมัติ (Deep Scan)
 # ==========================================
 start_auto_setup() {
     clear
     show_header
-    echo -e "${C_CYAN}--- Automatic Setup (Manual Bind) ---${C_RESET}"
+    echo -e "${C_CYAN}--- Automatic Setup (Deep Scan Mode) ---${C_RESET}"
     
     if [[ -s "$CONFIG_FILE" ]]; then
         echo -e "${C_YELLOW}⚠️ พบข้อมูลเดิมที่เคยบันทึกไว้!${C_RESET}"
@@ -388,7 +384,7 @@ start_auto_setup() {
         fi
     fi
 
-    echo -e "${C_YELLOW}🔄 ระบบกำลังค้นหาแพ็กเกจโคลน...${C_RESET}"
+    echo -e "${C_YELLOW}🔄 ระบบกำลังค้นหาแอปโคลนทั้งหมด...${C_RESET}"
     
     > "temp_pkg.txt"
     screen_count=0
@@ -402,11 +398,8 @@ start_auto_setup() {
     stty onlcr sane 2>/dev/null
 
     if (( screen_count == 0 )); then
-        echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
-        read -p "🔍 พิมพ์ชื่อแอป (เช่น roblox, arceus) เพื่อหาใหม่: " custom_pkg
-        
+        read -p "🔍 ไม่พบ 'roblox.clien' พิมพ์ชื่อแอป (เช่น arceus) เพื่อหาใหม่: " custom_pkg
         if [[ -n "$custom_pkg" ]]; then
-            echo -e "${C_YELLOW}🔄 กำลังค้นหาคำว่า '$custom_pkg'...${C_RESET}"
             > "temp_pkg.txt"
             for line in $(pm list packages); do
                 if [[ "${line,,}" == *"${custom_pkg,,}"* ]]; then
@@ -421,29 +414,67 @@ start_auto_setup() {
 
     if (( screen_count > 0 )); then
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
-        echo ""
+        echo -e "${C_YELLOW}🚀 กำลังมุดเข้าข้อมูลแอปเพื่อสแกนหา Username (โปรดรอสักครู่)...${C_RESET}\n"
         
         local found_pkgs=()
         while read -r line; do 
             if [[ -n "$line" ]]; then found_pkgs+=("$line"); fi
         done < "temp_pkg.txt"
         
-        local input_data=()
+        > "$CONFIG_FILE"
+        local new_cookies=0
+        
         for pkg in "${found_pkgs[@]}"; do
             pkg="${pkg//[$'\t\r\n ']/}"
-            read -p "👤 ใส่ Username ของจอ <$pkg>: " uname
-            if [[ -z "$uname" ]]; then uname="Unknown"; fi
-            input_data+=("$pkg:$uname")
-        done
-        
-        > "$CONFIG_FILE"
-        for data in "${input_data[@]}"; do
-            echo "$data" >> "$CONFIG_FILE"
+            echo -e "${C_CYAN}🔍 ตรวจสอบจอ: ${pkg}...${C_RESET}"
+            local uname=""
+            
+            # วิธีที่ 1: แอบสแกนหา Cookie ในตัวเกม
+            local extracted_cookie=$(su -c "grep -a -h -r -o '_\vert{}WARNING:-DO-NOT-SHARE-THIS[A-Za-z0-9\-\.\_\Vert{}]*' /data/data/$pkg/ 2>/dev/null | head -n 1" | tr -d '\r\n')
+            
+            if [[ -n "$extracted_cookie" ]]; then
+                local api_res=$(curl -s -k -L -X GET "https://users.roblox.com/v1/users/authenticated" -H "Cookie: .ROBLOSECURITY=$extracted_cookie" -H "User-Agent: $UA")
+                uname=$(echo "$api_res" | grep -o '"name":"[^"]*' | head -n 1 | awk -F'"' '{print $4}')
+                
+                if [[ -n "$uname" ]]; then
+                    echo -e "${C_GREEN}   ✔️ เจอคุกกี้! ดึงชื่อสำเร็จ: 👤 $uname${C_RESET}"
+                    
+                    # บันทึกคุกกี้ให้เลยถ้ายังไม่เคยบันทึก
+                    if ! grep -q "^$pkg " "$COOKIE_FILE" 2>/dev/null; then
+                        echo "$pkg $extracted_cookie" >> "$COOKIE_FILE"
+                        echo -e "${C_PURPLE}   ✔️ นำคุกกี้บันทึกลงระบบ Auto-Login ให้อัตโนมัติ!${C_RESET}"
+                        ((new_cookies++))
+                    fi
+                fi
+            fi
+
+            # วิธีที่ 2: สแกนหาจากไฟล์ชีพจร (ping.txt)
+            if [[ -z "$uname" ]]; then
+                local ping_file=$(su -c "find /storage/emulated/0/Android/data/$pkg -type f -name 'ping_*.txt' 2>/dev/null | head -n 1")
+                if [[ -n "$ping_file" ]]; then
+                    local filename="${ping_file##*/}" # ได้คำว่า ping_Username.txt
+                    uname="${filename#ping_}"         # หั่น ping_ ออก
+                    uname="${uname%.txt}"             # หั่น .txt ออก
+                    if [[ -n "$uname" ]]; then
+                        echo -e "${C_GREEN}   ✔️ ดึงชื่อจากไฟล์ชีพจรสำเร็จ: 👤 $uname${C_RESET}"
+                    fi
+                fi
+            fi
+
+            # วิธีที่ 3: ถ้าสแกนไม่เจออะไรเลย ให้พิมพ์เอง
+            if [[ -z "$uname" ]]; then
+                echo -e "${C_RED}   ⚠️ ไม่พบข้อมูลที่ล็อกอินไว้ กรุณาพิมพ์ชื่อตัวละครเอง${C_RESET}"
+                read -p "   👤 ใส่ Username: " uname
+                if [[ -z "$uname" ]]; then uname="Unknown"; fi
+            fi
+            
+            echo "$pkg:$uname" >> "$CONFIG_FILE"
+            echo ""
         done
         
         rm "temp_pkg.txt" 2>/dev/null
-        echo -e "\n${C_GREEN}🎉 บันทึกข้อมูลเรียบร้อยแล้ว!${C_RESET}"
-        sleep 2
+        echo -e "${C_GREEN}🎉 บันทึกข้อมูลและผูกหน้าจอเรียบร้อยแล้ว!${C_RESET}"
+        sleep 4
     else
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย${C_RESET}"
         rm "temp_pkg.txt" 2>/dev/null
@@ -703,7 +734,7 @@ while true; do
     show_header
     echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Start Auto Rejoin   ${C_YELLOW}Smart System${C_RESET}                   ${C_CYAN}│${C_RESET}"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Manual Name Bind${C_RESET}               ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Deep Scan & Bind${C_RESET}               ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}3${C_RESET}  Manage Webhook      ${C_YELLOW}Discord Autoexec${C_RESET}               ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}4${C_RESET}  Setup Cookie Login  ${C_YELLOW}Import & Auto Bind${C_RESET}             ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}5${C_RESET}  Run Cookie Login    ${C_YELLOW}Login to Home Screen${C_RESET}           ${C_CYAN}│${C_RESET}"
