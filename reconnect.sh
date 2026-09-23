@@ -12,7 +12,6 @@ C_RESET='\033[0m'
 CONFIG_FILE="roblox_accounts.cfg"
 LUA_FILENAME="status_check.lua"
 
-# ล้างไฟล์ตั้งค่าที่พังจากบั๊ก \vert{} อัตโนมัติ
 if [[ -f "$CONFIG_FILE" ]]; then
     check_bad=$(grep "vert" "$CONFIG_FILE" 2>/dev/null)
     if [[ -n "$check_bad" ]]; then
@@ -21,11 +20,11 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # ==========================================
-# ฟังก์ชันแสดงส่วนหัว (แบบใหม่ ป้องกันการก๊อปปี้เพี้ยน)
+# ฟังก์ชันแสดงส่วนหัว
 # ==========================================
 show_header() {
     echo -e "${C_CYAN}==========================================${C_RESET}"
-    echo -e "${C_GREEN}        TH REJOIN TOOL (v8.0 SAFE)${C_RESET}"
+    echo -e "${C_GREEN}    TH REJOIN TOOL (v8.1 Root Inject)${C_RESET}"
     echo -e "${C_YELLOW}             Made by whatsupX${C_RESET}"
     echo -e "${C_CYAN}==========================================${C_RESET}"
     echo ""
@@ -60,7 +59,7 @@ check_root() {
 }
 
 # ==========================================
-# เมนู 3: ระบบฝัง Lua Script
+# เมนู 3: ระบบฝัง Lua Script (ทะลวงด้วย Root)
 # ==========================================
 setup_webhook() {
     clear
@@ -69,15 +68,21 @@ setup_webhook() {
     read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook [กด Enter เพื่อยกเลิก]: " webhook_url
     if [[ -z "$webhook_url" ]]; then return; fi
 
-    echo -e "${C_YELLOW}🔍 กำลังค้นหาโฟลเดอร์ Autoexec...${C_RESET}"
+    echo -e "${C_YELLOW}🔍 กำลังใช้ Root ค้นหาโฟลเดอร์ Autoexec (อาจใช้เวลาสักครู่)...${C_RESET}"
     
-    found_any="false"
-    for folder in $(find /storage/emulated/0 -maxdepth 4 -type d -iname "Autoexec" 2>/dev/null); do
-        found_any="true"
-        lua_path="$folder/$LUA_FILENAME"
-        if [[ -f "$lua_path" ]]; then rm "$lua_path"; fi
-        
-        cat <<EOF > "$lua_path"
+    # ใช้ Root ค้นหาเพื่อทะลวง Android/data
+    autoexec_folders=$(su -c "find /storage/emulated/0 -maxdepth 6 -type d -iname 'autoexec' 2>/dev/null")
+
+    if [[ -z "$autoexec_folders" ]]; then
+        echo -e "${C_RED}❌ ไม่พบโฟลเดอร์ Autoexec ในเครื่อง${C_RESET}"
+        echo -e "${C_YELLOW}💡 แนะนำให้เปิดเข้าเกมให้ถึงหน้าแรก 1 ครั้งเพื่อให้แอปสร้างโฟลเดอร์ก่อนครับ${C_RESET}"
+        sleep 4
+        return
+    fi
+
+    # สร้างไฟล์ชั่วคราวในพื้นที่ของ Termux
+    TEMP_LUA="$HOME/temp_status_check.lua"
+    cat <<EOF > "$TEMP_LUA"
 if not game:IsLoaded() then game.Loaded:Wait() end
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -121,11 +126,21 @@ task.spawn(function()
     end
 end)
 EOF
-        echo -e "${C_GREEN}✔️ เพิ่มระบบชีพจรลงใน: $folder สำเร็จ${C_RESET}"
+
+    # ใช้ Root ก๊อปปี้ไฟล์ไปยัดใน Autoexec ทุกอันที่เจอ
+    found_any="false"
+    for folder in $autoexec_folders; do
+        found_any="true"
+        target_path="$folder/$LUA_FILENAME"
+        su -c "cp '$TEMP_LUA' '$target_path'"
+        su -c "chmod 777 '$target_path'"
+        echo -e "${C_GREEN}✔️ ฝังสคริปต์ด้วย Root สำเร็จ: $folder${C_RESET}"
     done
 
+    rm "$TEMP_LUA" 2>/dev/null
+
     if [[ "$found_any" == "false" ]]; then
-        echo -e "${C_RED}❌ ไม่พบโฟลเดอร์ Autoexec ในเครื่อง${C_RESET}"
+        echo -e "${C_RED}❌ เกิดข้อผิดพลาด ไม่สามารถฝังไฟล์ได้${C_RESET}"
         sleep 3
     else
         echo ""
@@ -196,7 +211,6 @@ start_auto_setup() {
             pkg="${pkg//[$'\t\r\n ']/}"
             read -p "👤 ใส่ Username ของจอ [$pkg]: " uname
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
-            # ใช้ : แทน | เพื่อป้องกันบั๊กก๊อปปี้
             input_data+=("$pkg:$uname")
         done
         
@@ -276,7 +290,7 @@ relaunch_pkg() {
     safe_su "am start -f 0x10000000 -a android.intent.action.VIEW -d \"roblox://placeId=$place_id\" -p \"$p\""
     
     launch_times[$idx]=$(date +%s)
-    if [[ -n "${ping_paths[$idx]}" && -f "${ping_paths[$idx]}" ]]; then
+    if [[ -n "${ping_paths[$idx]}" ]]; then
         safe_su "rm \"${ping_paths[$idx]}\""
     fi
     ping_paths[$idx]=""
@@ -308,7 +322,6 @@ start_auto_rejoin() {
     pkgs=()
     unames=()
     
-    # อ่านไฟล์ตั้งค่าด้วย : แทนเพื่อความปลอดภัย
     while IFS=':' read -r pkg uname; do 
         pkg="${pkg//[$'\t\r\n ']/}"
         uname="${uname//[$'\t\r\n ']/}"
@@ -347,17 +360,15 @@ start_auto_rejoin() {
             pkg="${pkgs[$i]}"
             uname="${unames[$i]}"
             
-            if [[ ! -f "${ping_paths[$i]}" ]]; then
-                found_path=""
-                for f in $(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${uname}.txt" 2>/dev/null); do
-                    found_path="$f"
-                    break
-                done
+            # ใช้ Root ค้นหาไฟล์ชีพจร เพื่อทะลวง Android/data
+            if [[ -z "${ping_paths[$i]}" ]]; then
+                found_path=$(su -c "find /storage/emulated/0 -maxdepth 6 -type f -name 'ping_${uname}.txt' 2>/dev/null | head -n 1")
                 if [[ -n "$found_path" ]]; then ping_paths[$i]="$found_path"; fi
             fi
 
-            if [[ -n "${ping_paths[$i]}" && -f "${ping_paths[$i]}" ]]; then
-                last_ping=$(cat "${ping_paths[$i]}" 2>/dev/null)
+            if [[ -n "${ping_paths[$i]}" ]]; then
+                # ใช้ Root อ่านไฟล์ชีพจร
+                last_ping=$(su -c "cat '${ping_paths[$i]}'" 2>/dev/null)
                 
                 if [[ "$last_ping" == "DEAD" ]]; then
                     statuses[$i]="หลุด! (Error Msg)"
