@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# กำหนดค่าสี (\033 แทน \e ป้องกันจอรวน)
+# กำหนดค่าสี
 # ==========================================
 C_CYAN='\033[36m'
 C_GREEN='\033[32m'
@@ -12,26 +12,32 @@ C_RESET='\033[0m'
 CONFIG_FILE="roblox_accounts.cfg"
 LUA_FILENAME="status_check.lua"
 
+# ล้างไฟล์ตั้งค่าที่พังจากบั๊ก \vert{} อัตโนมัติ
+if [[ -f "$CONFIG_FILE" ]]; then
+    check_bad=$(grep "vert" "$CONFIG_FILE" 2>/dev/null)
+    if [[ -n "$check_bad" ]]; then
+        rm "$CONFIG_FILE"
+    fi
+fi
+
 # ==========================================
-# ฟังก์ชันแสดงส่วนหัว
+# ฟังก์ชันแสดงส่วนหัว (แบบใหม่ ป้องกันการก๊อปปี้เพี้ยน)
 # ==========================================
 show_header() {
-    echo -e "${C_CYAN}  _____ _  _   ___ ___ _  ___ ___ _  _ ${C_RESET}"
-    echo -e "${C_CYAN} |_   _| || | | _ \ __| |/ _ \_ _| \| |${C_RESET}"
-    echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
-    echo -e "${C_CYAN}   \vert{}_\vert{} \vert{}_\vert{}\vert{}_\vert{} \vert{}_\vert{}_\___\vert{}/ \___/___\vert{}_\vert{}\_\vert{}${C_RESET}"
-    echo -e "${C_CYAN}                     \vert{}__/${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v7.9 (Config Format Fix)${C_RESET}"
-    echo -e "${C_YELLOW}          Made by whatsupX${C_RESET}"
+    echo -e "${C_CYAN}==========================================${C_RESET}"
+    echo -e "${C_GREEN}        TH REJOIN TOOL (v8.0 SAFE)${C_RESET}"
+    echo -e "${C_YELLOW}             Made by whatsupX${C_RESET}"
+    echo -e "${C_CYAN}==========================================${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# ฟังก์ชันรันคำสั่ง Root แบบปลอดภัยขั้นสุด
+# ฟังก์ชันรันคำสั่ง Root แบบปลอดภัย
 # ==========================================
 safe_su() {
     su -c "$1" < /dev/null > /dev/null 2>&1
     stty onlcr sane 2>/dev/null
+    printf "\r"
 }
 
 # ==========================================
@@ -44,12 +50,10 @@ check_root() {
     echo -e "${C_CYAN}🔍 กำลังตรวจสอบสิทธิ์ Root ในเครื่อง...${C_RESET}"
     
     if ! su -c 'true' < /dev/null > /dev/null 2>&1; then
-        echo -e "${C_RED}❌ ตรวจพบว่าเครื่องของคุณยังไม่ได้ Root! หรือยังไม่ได้อนุญาตสิทธิ์ให้ Termux${C_RESET}"
-        echo -e "${C_YELLOW}⚠️ กรุณาไปเปิดใช้งาน Root ในการตั้งค่าของ Cloud Phone หรือกด Grant (อนุญาต) สิทธิ์ก่อนใช้งาน${C_RESET}"
-        echo ""
+        echo -e "${C_RED}❌ ตรวจพบว่าเครื่องของคุณยังไม่ได้ Root!${C_RESET}"
         exit 1
     else
-        echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว! พร้อมใช้งาน${C_RESET}"
+        echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว!${C_RESET}"
         sleep 1
     fi
     stty onlcr sane 2>/dev/null
@@ -62,21 +66,14 @@ setup_webhook() {
     clear
     show_header
     echo -e "${C_CYAN}--- Setup Discord Webhook & Autoexec ---${C_RESET}"
-    echo -e "${C_YELLOW}[ กด Enter โดยไม่พิมพ์อะไร เพื่อยกเลิกและกลับเมนูหลัก ]${C_RESET}"
-    
-    read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook: " webhook_url
+    read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook [กด Enter เพื่อยกเลิก]: " webhook_url
     if [[ -z "$webhook_url" ]]; then return; fi
 
-    echo -e "${C_YELLOW}🔍 กำลังค้นหาโฟลเดอร์ Autoexec ทั้งหมดในเครื่อง...${C_RESET}"
-    autoexec_folders=$(find /storage/emulated/0 -maxdepth 4 -type d -iname "Autoexec" 2>/dev/null)
-
-    if [[ -z "$autoexec_folders" ]]; then
-        echo -e "${C_RED}❌ ไม่พบโฟลเดอร์ Autoexec ในเครื่อง${C_RESET}"
-        sleep 3
-        return
-    fi
-
-    echo "$autoexec_folders" | while read -r folder; do
+    echo -e "${C_YELLOW}🔍 กำลังค้นหาโฟลเดอร์ Autoexec...${C_RESET}"
+    
+    found_any="false"
+    for folder in $(find /storage/emulated/0 -maxdepth 4 -type d -iname "Autoexec" 2>/dev/null); do
+        found_any="true"
         lua_path="$folder/$LUA_FILENAME"
         if [[ -f "$lua_path" ]]; then rm "$lua_path"; fi
         
@@ -98,8 +95,8 @@ local function sendWebhook(title, desc, colorHex)
         ["embeds"] = {{
             ["title"] = title, ["description"] = desc, ["color"] = colorHex,
             ["fields"] = {
-                {["name"] = "👤 Username", ["value"] = playerName, ["inline"] = true},
-                {["name"] = "🏷️ Display Name", ["value"] = displayName, ["inline"] = true}
+                {["name"] = "Username", ["value"] = playerName, ["inline"] = true},
+                {["name"] = "Display Name", ["value"] = displayName, ["inline"] = true}
             },
             ["footer"] = {["text"] = "TH REJOIN TOOL"}
         }}
@@ -124,10 +121,16 @@ task.spawn(function()
     end
 end)
 EOF
-        echo -e "${C_GREEN}✔️ เพิ่มไฟล์ระบบชีพจรลงใน: $folder สำเร็จ${C_RESET}"
+        echo -e "${C_GREEN}✔️ เพิ่มระบบชีพจรลงใน: $folder สำเร็จ${C_RESET}"
     done
-    echo ""
-    read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
+
+    if [[ "$found_any" == "false" ]]; then
+        echo -e "${C_RED}❌ ไม่พบโฟลเดอร์ Autoexec ในเครื่อง${C_RESET}"
+        sleep 3
+    else
+        echo ""
+        read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
+    fi
 }
 
 # ==========================================
@@ -136,52 +139,65 @@ EOF
 start_auto_setup() {
     clear
     show_header
-    echo -e "${C_CYAN}--- Automatic Setup (Detect Packages & Bind Accounts) ---${C_RESET}"
+    echo -e "${C_CYAN}--- Automatic Setup ---${C_RESET}"
     
     if [[ -s "$CONFIG_FILE" ]]; then
-        echo -e "${C_YELLOW}⚠️ พบข้อมูลหน้าจอและบัญชีที่เคยบันทึกไว้แล้ว!${C_RESET}"
-        read -p "❓ ต้องการเคลียร์ข้อมูลและตั้งค่าใหม่หรือไม่? (y/n) [กด Enter เพื่อยกเลิก]: " confirm_reset
+        echo -e "${C_YELLOW}⚠️ พบข้อมูลเดิมที่เคยบันทึกไว้!${C_RESET}"
+        read -p "❓ ต้องการตั้งค่าใหม่หรือไม่? (y/n) [กด Enter ยกเลิก]: " confirm_reset
         if [[ "$confirm_reset" != "y" && "$confirm_reset" != "Y" ]]; then
-            echo -e "${C_GREEN}✅ ยกเลิกการตั้งค่า (ยังคงใช้ข้อมูลบัญชีเดิม)${C_RESET}"
+            echo -e "${C_GREEN}✅ คงข้อมูลเดิมไว้${C_RESET}"
             sleep 2
             return
         fi
     fi
 
-    echo -e "${C_YELLOW}🔄 ระบบกำลังค้นหาแพ็กเกจโคลนทั้งหมด...${C_RESET}"
+    echo -e "${C_YELLOW}🔄 ระบบกำลังค้นหาแพ็กเกจโคลน...${C_RESET}"
     
-    pm list packages | grep -i "roblox.clien" | cut -f 2 -d ':' > "temp_pkg.txt"
+    > "temp_pkg.txt"
+    screen_count=0
+    for line in $(pm list packages); do
+        if [[ "$line" == *roblox.clien* ]]; then
+            pkg_name="${line#package:}"
+            echo "$pkg_name" >> "temp_pkg.txt"
+            ((screen_count++))
+        fi
+    done
     stty onlcr sane 2>/dev/null
-    screen_count=$(wc -l < "temp_pkg.txt" | tr -d ' ')
 
     if [[ "$screen_count" -eq 0 ]]; then
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
-        read -p "🔍 กรุณาพิมพ์ชื่อแอป (หรือคำย่อ เช่น roblox, arceus) เพื่อค้นหาใหม่: " custom_pkg
+        read -p "🔍 พิมพ์ชื่อแอป (เช่น roblox, arceus) เพื่อหาใหม่: " custom_pkg
         
         if [[ -n "$custom_pkg" ]]; then
-            echo -e "${C_YELLOW}🔄 กำลังค้นหาแพ็กเกจที่มีคำว่า '$custom_pkg'...${C_RESET}"
-            pm list packages | grep -i "$custom_pkg" | cut -f 2 -d ':' > "temp_pkg.txt"
+            echo -e "${C_YELLOW}🔄 กำลังค้นหาคำว่า '$custom_pkg'...${C_RESET}"
+            > "temp_pkg.txt"
+            for line in $(pm list packages); do
+                if [[ "${line,,}" == *"${custom_pkg,,}"* ]]; then
+                    pkg_name="${line#package:}"
+                    echo "$pkg_name" >> "temp_pkg.txt"
+                    ((screen_count++))
+                fi
+            done
             stty onlcr sane 2>/dev/null
-            screen_count=$(wc -l < "temp_pkg.txt" | tr -d ' ')
         fi
     fi
 
     if [[ "$screen_count" -gt 0 ]]; then
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
-        echo -e "${C_YELLOW}⚠️ เพื่อให้ระบบ Rejoin ทำงานได้ กรุณาใส่ Username ให้ตรงกับแต่ละจอ${C_RESET}"
         echo ""
         
         local found_pkgs=()
-        while IFS= read -r line; do 
+        while read -r line; do 
             if [[ -n "$line" ]]; then found_pkgs+=("$line"); fi
         done < "temp_pkg.txt"
         
         local input_data=()
         for pkg in "${found_pkgs[@]}"; do
-            pkg=$(echo "$pkg" | tr -d '\r\n ')
+            pkg="${pkg//[$'\t\r\n ']/}"
             read -p "👤 ใส่ Username ของจอ [$pkg]: " uname
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
-            input_data+=("$pkg\vert{}$uname")
+            # ใช้ : แทน | เพื่อป้องกันบั๊กก๊อปปี้
+            input_data+=("$pkg:$uname")
         done
         
         > "$CONFIG_FILE"
@@ -190,17 +206,17 @@ start_auto_setup() {
         done
         
         rm "temp_pkg.txt" 2>/dev/null
-        echo -e "\n${C_GREEN}🎉 บันทึกข้อมูลและผูกบัญชีครบทั้งหมดเรียบร้อยแล้ว!${C_RESET}"
+        echo -e "\n${C_GREEN}🎉 บันทึกข้อมูลเรียบร้อยแล้ว!${C_RESET}"
         sleep 2
     else
-        echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่คุณค้นหาในเครื่องนี้${C_RESET}"
+        echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย${C_RESET}"
         rm "temp_pkg.txt" 2>/dev/null
         sleep 2
     fi
 }
 
 # ==========================================
-# ระบบวาดตาราง Live Dashboard
+# ระบบวาดตาราง
 # ==========================================
 draw_dashboard() {
     stty onlcr sane 2>/dev/null 
@@ -209,21 +225,21 @@ draw_dashboard() {
     echo -e "${C_CYAN}--- 📊 Smart Rejoin Dashboard ---${C_RESET}"
     echo -e "▶️ สถานะระบบ: ${global_msg}"
     echo "================================================================="
-    printf "| %-16s | %-16s | %-20s |\n" "📱 Package" "👤 Account" "📌 Status"
+    printf "  %-16s : %-16s : %-20s \n" "Package" "Account" "Status"
     echo "================================================================="
     for j in "${!pkgs[@]}"; do
         local pkg="${pkgs[$j]}"
         local acc="${unames[$j]}"
         local stat="${statuses[$j]}"
         local col="${colors[$j]}"
-        printf "| %-16s | %-16s | ${col}%-20s${C_RESET} \vert{}\n" "$pkg" "$acc" "$stat"
+        printf "  %-16s : %-16s : ${col}%-20s${C_RESET} \n" "$pkg" "$acc" "$stat"
     done
     echo "================================================================="
     echo -e "${C_RED}[ กด Ctrl+C เพื่อหยุดการทำงาน ]${C_RESET}"
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอเฉพาะแอปที่หลุด
+# ฟังก์ชันเปิดจอ
 # ==========================================
 relaunch_pkg() {
     local p="$1"
@@ -270,7 +286,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: ระบบ Rejoin Loop
+# เมนู 1: Rejoin Loop
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -286,16 +302,16 @@ start_auto_rejoin() {
     read -p "🎯 Enter Place ID: " place_id
     if [[ -z "$place_id" ]]; then return; fi
 
-    read -p "⏳ หน่วงเวลาระหว่างเปิดจอรอบแรกกี่วินาที? (แนะนำ 5-10): " delay_between
+    read -p "⏳ หน่วงเวลาระหว่างเปิดจอรอบแรกกี่วิ? (แนะนำ 5-10): " delay_between
     if [[ ! "$delay_between" =~ ^[0-9]+$ ]]; then delay_between=7; fi
 
     pkgs=()
     unames=()
     
-    # 📌 แก้ไขบั๊กอ่านไฟล์แล้วข้อมูลว่างเปล่า (รองรับไฟล์เก่าและกำจัดช่องว่างขยะ)
-    while IFS='|' read -r pkg uname || [[ -n "$pkg" ]]; do 
-        pkg=$(echo "$pkg" | tr -d '\r\n ')
-        uname=$(echo "$uname" | tr -d '\r\n ')
+    # อ่านไฟล์ตั้งค่าด้วย : แทนเพื่อความปลอดภัย
+    while IFS=':' read -r pkg uname; do 
+        pkg="${pkg//[$'\t\r\n ']/}"
+        uname="${uname//[$'\t\r\n ']/}"
         
         if [[ -n "$pkg" ]]; then
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
@@ -304,11 +320,9 @@ start_auto_rejoin() {
         fi
     done < "$CONFIG_FILE"
     
-    # ดักจับกรณีที่ไฟล์เสียหายหรือว่างเปล่าจริงๆ
     if [[ ${#pkgs[@]} -eq 0 ]]; then
-        echo -e "${C_RED}❌ ข้อมูลในไฟล์ตั้งค่าไม่ถูกต้องหรือเสียหาย!${C_RESET}"
-        echo -e "${C_YELLOW}กรุณาไปที่เมนู 2 เพื่อตั้งค่าหน้าจอและ Username ใหม่อีกครั้งครับ${C_RESET}"
-        sleep 4
+        echo -e "${C_RED}❌ ข้อมูลเสียหาย! กรุณาไปทำเมนู 2 ใหม่อีกครั้ง${C_RESET}"
+        sleep 3
         return
     fi
 
@@ -326,7 +340,7 @@ start_auto_rejoin() {
     done
 
     while true; do
-        global_msg="${C_CYAN}👀 ระบบ Rejoin กำลังตรวจสอบการตอบสนอง...${C_RESET}"
+        global_msg="${C_CYAN}👀 ระบบ Rejoin กำลังตรวจสอบ...${C_RESET}"
         current_time=$(date +%s)
 
         for i in "${!pkgs[@]}"; do
@@ -334,7 +348,11 @@ start_auto_rejoin() {
             uname="${unames[$i]}"
             
             if [[ ! -f "${ping_paths[$i]}" ]]; then
-                found_path=$(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${uname}.txt" 2>/dev/null | head -n 1)
+                found_path=""
+                for f in $(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${uname}.txt" 2>/dev/null); do
+                    found_path="$f"
+                    break
+                done
                 if [[ -n "$found_path" ]]; then ping_paths[$i]="$found_path"; fi
             fi
 
@@ -367,7 +385,7 @@ start_auto_rejoin() {
                     draw_dashboard
                     relaunch_pkg "$pkg" "$i"
                 else
-                    statuses[$i]="รอสคริปต์ทำงาน (${wait_time}s)"
+                    statuses[$i]="รอสคริปต์ (${wait_time}s)"
                     colors[$i]="$C_YELLOW"
                 fi
             fi
@@ -379,25 +397,25 @@ start_auto_rejoin() {
 }
 
 # ==========================================
-# ดักจับ Ctrl+C เพื่อคืนค่า Cursor และซ่อมหน้าจอ
+# ดักจับ Ctrl+C
 # ==========================================
 trap 'tput cnorm; clear; stty onlcr sane 2>/dev/null; exit' INT
 
 # ==========================================
-# เริ่มต้นการทำงาน 
+# เริ่มการทำงาน 
 # ==========================================
 check_root
 
 # ==========================================
-# เมนูหลัก (Main Menu)
+# เมนูหลัก
 # ==========================================
 while true; do
     clear
     show_header
     echo -e "${C_CYAN}Available Features:${C_RESET}"
-    echo -e "${C_CYAN}1.${C_RESET} Start Auto Rejoin (Smart System)"
-    echo -e "${C_CYAN}2.${C_RESET} Start Auto Setup (Detect Packages & Bind Accounts)"
-    echo -e "${C_CYAN}3.${C_RESET} Add Discord Webhook & Heartbeat to Autoexec"
+    echo -e "${C_CYAN}1.${C_RESET} Start Auto Rejoin"
+    echo -e "${C_CYAN}2.${C_RESET} Start Auto Setup (Detect & Bind)"
+    echo -e "${C_CYAN}3.${C_RESET} Setup Webhook & Autoexec"
     echo -e "${C_CYAN}0.${C_RESET} Exit"
     echo ""
     read -p "Select an option: " opt_main
