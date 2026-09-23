@@ -21,7 +21,7 @@ show_header() {
     echo -e "${C_CYAN}   | | | __ | |   / _|| | (_) | || .\` |${C_RESET}"
     echo -e "${C_CYAN}   \vert{}_\vert{} \vert{}_\vert{}\vert{}_\vert{} \vert{}_\vert{}_\___\vert{}/ \___/___\vert{}_\vert{}\_\vert{}${C_RESET}"
     echo -e "${C_CYAN}                     \vert{}__/${C_RESET}"
-    echo -e "${C_GREEN}    TOOL v7.8 (Syntax Copy Bug Fix)${C_RESET}"
+    echo -e "${C_GREEN}    TOOL v7.9 (Config Format Fix)${C_RESET}"
     echo -e "${C_YELLOW}          Made by whatsupX${C_RESET}"
     echo ""
 }
@@ -65,7 +65,7 @@ setup_webhook() {
     echo -e "${C_YELLOW}[ กด Enter โดยไม่พิมพ์อะไร เพื่อยกเลิกและกลับเมนูหลัก ]${C_RESET}"
     
     read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook: " webhook_url
-    [[ -z "$webhook_url" ]] && return
+    if [[ -z "$webhook_url" ]]; then return; fi
 
     echo -e "${C_YELLOW}🔍 กำลังค้นหาโฟลเดอร์ Autoexec ทั้งหมดในเครื่อง...${C_RESET}"
     autoexec_folders=$(find /storage/emulated/0 -maxdepth 4 -type d -iname "Autoexec" 2>/dev/null)
@@ -78,7 +78,7 @@ setup_webhook() {
 
     echo "$autoexec_folders" | while read -r folder; do
         lua_path="$folder/$LUA_FILENAME"
-        [[ -f "$lua_path" ]] && rm "$lua_path"
+        if [[ -f "$lua_path" ]]; then rm "$lua_path"; fi
         
         cat <<EOF > "$lua_path"
 if not game:IsLoaded() then game.Loaded:Wait() end
@@ -172,12 +172,15 @@ start_auto_setup() {
         echo ""
         
         local found_pkgs=()
-        while IFS= read -r line; do [[ -n "$line" ]] && found_pkgs+=("$line"); done < "temp_pkg.txt"
+        while IFS= read -r line; do 
+            if [[ -n "$line" ]]; then found_pkgs+=("$line"); fi
+        done < "temp_pkg.txt"
         
         local input_data=()
         for pkg in "${found_pkgs[@]}"; do
+            pkg=$(echo "$pkg" | tr -d '\r\n ')
             read -p "👤 ใส่ Username ของจอ [$pkg]: " uname
-            [[ -z "$uname" ]] && uname="Unknown"
+            if [[ -z "$uname" ]]; then uname="Unknown"; fi
             input_data+=("$pkg\vert{}$uname")
         done
         
@@ -273,7 +276,6 @@ start_auto_rejoin() {
     clear
     show_header
     
-    # ลบสัญลักษณ์ || ออกจากโค้ด เพื่อป้องกันการโดนแปลงเป็นสมการ
     if [[ ! -s "$CONFIG_FILE" ]]; then
         echo -e "${C_RED}❌ ไม่พบข้อมูลจอ! กรุณาไปทำ Auto Setup (เมนู 2) ก่อน${C_RESET}"
         sleep 3
@@ -282,20 +284,34 @@ start_auto_rejoin() {
 
     echo -e "${C_CYAN}--- Auto Rejoin Setup ---${C_RESET}"
     read -p "🎯 Enter Place ID: " place_id
-    [[ -z "$place_id" ]] && return
+    if [[ -z "$place_id" ]]; then return; fi
 
     read -p "⏳ หน่วงเวลาระหว่างเปิดจอรอบแรกกี่วินาที? (แนะนำ 5-10): " delay_between
-    [[ ! "$delay_between" =~ ^[0-9]+$ ]] && delay_between=7
+    if [[ ! "$delay_between" =~ ^[0-9]+$ ]]; then delay_between=7; fi
 
     pkgs=()
     unames=()
-    while IFS='|' read -r pkg uname; do 
-        if [[ -n "$pkg" && -n "$uname" ]]; then
+    
+    # 📌 แก้ไขบั๊กอ่านไฟล์แล้วข้อมูลว่างเปล่า (รองรับไฟล์เก่าและกำจัดช่องว่างขยะ)
+    while IFS='|' read -r pkg uname || [[ -n "$pkg" ]]; do 
+        pkg=$(echo "$pkg" | tr -d '\r\n ')
+        uname=$(echo "$uname" | tr -d '\r\n ')
+        
+        if [[ -n "$pkg" ]]; then
+            if [[ -z "$uname" ]]; then uname="Unknown"; fi
             pkgs+=("$pkg")
             unames+=("$uname")
         fi
     done < "$CONFIG_FILE"
     
+    # ดักจับกรณีที่ไฟล์เสียหายหรือว่างเปล่าจริงๆ
+    if [[ ${#pkgs[@]} -eq 0 ]]; then
+        echo -e "${C_RED}❌ ข้อมูลในไฟล์ตั้งค่าไม่ถูกต้องหรือเสียหาย!${C_RESET}"
+        echo -e "${C_YELLOW}กรุณาไปที่เมนู 2 เพื่อตั้งค่าหน้าจอและ Username ใหม่อีกครั้งครับ${C_RESET}"
+        sleep 4
+        return
+    fi
+
     statuses=()
     colors=()
     ping_paths=()
@@ -317,7 +333,6 @@ start_auto_rejoin() {
             pkg="${pkgs[$i]}"
             uname="${unames[$i]}"
             
-            # ลบสัญลักษณ์ || ออกจากบรรทัดนี้ด้วยเช่นกัน
             if [[ ! -f "${ping_paths[$i]}" ]]; then
                 found_path=$(find /storage/emulated/0 -maxdepth 5 -type f -name "ping_${uname}.txt" 2>/dev/null | head -n 1)
                 if [[ -n "$found_path" ]]; then ping_paths[$i]="$found_path"; fi
