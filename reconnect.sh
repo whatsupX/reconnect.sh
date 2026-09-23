@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# กำหนดค่าสี (ใช้ \033 แทน \e ป้องกันจอรวน)
+# กำหนดค่าสี
 # ==========================================
 C_CYAN='\033[36m'
 C_GREEN='\033[32m'
@@ -13,8 +13,10 @@ C_RESET='\033[0m'
 CONFIG_FILE="roblox_accounts.cfg"
 WEBHOOK_FILE="webhook.cfg"
 LUA_FILENAME="status_check.lua"
+TEMP_LUA="/storage/emulated/0/temp_status_check.lua"
+TEMP_FOLDERS="/storage/emulated/0/temp_autoexec_folders.txt"
 
-# ล้างไฟล์ตั้งค่าที่พังจากบั๊ก \vert{} อัตโนมัติ (เผื่อหลงเหลือ)
+# ล้างไฟล์ตั้งค่าที่พัง
 if [[ -f "$CONFIG_FILE" ]]; then
     check_bad=$(grep "vert" "$CONFIG_FILE" 2>/dev/null)
     if [[ -n "$check_bad" ]]; then
@@ -23,7 +25,7 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # ==========================================
-# ฟังก์ชันแสดงส่วนหัว (โลโก้ whatsupX แบบ Block Font)
+# ฟังก์ชันแสดงส่วนหัว
 # ==========================================
 show_header() {
     echo -e "${C_CYAN}██╗    ██╗██╗  ██╗ █████╗ ████████╗███████╗██╗   ██╗██████╗ ██╗  ██╗${C_RESET}"
@@ -32,12 +34,12 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}         v8.3 (Box UI) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}        v8.4 (Input Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# ฟังก์ชันรันคำสั่ง Root แบบปลอดภัย
+# ฟังก์ชันรันคำสั่ง Root
 # ==========================================
 safe_su() {
     su -c "$1" < /dev/null > /dev/null 2>&1
@@ -46,7 +48,7 @@ safe_su() {
 }
 
 # ==========================================
-# ระบบตรวจสอบสิทธิ์ Root
+# ระบบตรวจสอบ Root
 # ==========================================
 check_root() {
     stty onlcr sane 2>/dev/null
@@ -65,25 +67,24 @@ check_root() {
 }
 
 # ==========================================
-# ฟังก์ชันแกนกลาง: ฝัง Lua อัตโนมัติด้วย Root
+# ฝัง Lua อัตโนมัติ (แก้บั๊ก Permission)
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
     
     local saved_webhook=""
     if [[ -f "$WEBHOOK_FILE" ]]; then
-        saved_webhook=$(cat "$WEBHOOK_FILE" | tr -d '\r\n')
+        saved_webhook=$(tr -d '\r\n' < "$WEBHOOK_FILE")
     fi
 
-    local autoexec_folders=$(su -c "find /storage/emulated/0 -maxdepth 6 -type d -iname 'autoexec' 2>/dev/null")
+    su -c "find /storage/emulated/0 -maxdepth 6 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
 
-    if [[ -z "$autoexec_folders" ]]; then
+    if [[ ! -s "$TEMP_FOLDERS" ]]; then
         echo -e "${C_YELLOW}⚠️ ไม่พบโฟลเดอร์ Autoexec (ระบบอาจสร้างขึ้นหลังจากเปิดเกมรอบแรก)${C_RESET}"
         sleep 2
         return
     fi
 
-    TEMP_LUA="$HOME/temp_status_check.lua"
     cat <<EOF > "$TEMP_LUA"
 if not game:IsLoaded() then game.Loaded:Wait() end
 local Players = game:GetService("Players")
@@ -129,15 +130,18 @@ task.spawn(function()
 end)
 EOF
 
-    for folder in $autoexec_folders; do
-        local target_path="$folder/$LUA_FILENAME"
-        su -c "cp '$TEMP_LUA' '$target_path'"
-        su -c "chmod 777 '$target_path'"
-        echo -e "${C_GREEN}✔️ ฝังสคริปต์อัปเดตลงใน: $folder${C_RESET}"
-    done
+    while read -r folder; do
+        if [[ -n "$folder" ]]; then
+            local target_path="$folder/$LUA_FILENAME"
+            su -c "cp '$TEMP_LUA' '$target_path' 2>/dev/null"
+            su -c "chmod 777 '$target_path' 2>/dev/null"
+            echo -e "${C_GREEN}✔️ ฝังสคริปต์อัปเดตลงใน: $folder${C_RESET}"
+        fi
+    done < "$TEMP_FOLDERS"
 
     rm "$TEMP_LUA" 2>/dev/null
-    sleep 1
+    rm "$TEMP_FOLDERS" 2>/dev/null
+    sleep 2
 }
 
 # ==========================================
@@ -149,7 +153,7 @@ setup_webhook() {
     echo -e "${C_CYAN}--- Manage Discord Webhook ---${C_RESET}"
     
     if [[ -f "$WEBHOOK_FILE" ]]; then
-        local current_hook=$(cat "$WEBHOOK_FILE" | tr -d '\r\n')
+        local current_hook=$(tr -d '\r\n' < "$WEBHOOK_FILE")
         echo -e "${C_YELLOW}📌 Webhook ปัจจุบัน: ${current_hook}${C_RESET}"
     else
         echo -e "${C_YELLOW}📌 Webhook ปัจจุบัน: (ยังไม่ได้ตั้งค่า)${C_RESET}"
@@ -196,7 +200,7 @@ start_auto_setup() {
     > "temp_pkg.txt"
     screen_count=0
     for line in $(pm list packages); do
-        if [[ "$line" == *roblox.clien* ]]; then
+        if [[ "${line,,}" == *roblox.clien* ]]; then
             pkg_name="${line#package:}"
             echo "$pkg_name" >> "temp_pkg.txt"
             ((screen_count++))
@@ -255,7 +259,7 @@ start_auto_setup() {
 }
 
 # ==========================================
-# ระบบวาดตาราง Dashboard (ใช้กรอบ Box UI)
+# ระบบวาดตาราง Dashboard
 # ==========================================
 draw_dashboard() {
     stty onlcr sane 2>/dev/null 
@@ -337,7 +341,13 @@ start_auto_rejoin() {
         return
     fi
 
+    # ฝังสคริปต์อัตโนมัติ
     inject_lua_script
+
+    # รีเซ็ตหน้าจอและคีย์บอร์ดให้สะอาดพร้อมรับข้อมูล
+    stty onlcr sane 2>/dev/null
+    clear
+    show_header
 
     echo -e "${C_CYAN}--- Auto Rejoin Setup ---${C_RESET}"
     read -p "🎯 Enter Place ID: " place_id
@@ -443,7 +453,7 @@ trap 'tput cnorm; clear; stty onlcr sane 2>/dev/null; exit' INT
 check_root
 
 # ==========================================
-# เมนูหลัก (หน้าต่าง Box UI แบบใหม่)
+# เมนูหลัก
 # ==========================================
 while true; do
     clear
