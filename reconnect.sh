@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}    v10.7 (Anti-Freeze Fast Path) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}    v10.8 (Workspace Path Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -72,7 +72,7 @@ check_root() {
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ (สแกนแบบกำหนดเป้าหมายเพื่อลดความแลค)
+# ฝัง Lua อัตโนมัติ (แก้ไขให้ค้นหาครอบคลุมตัวรันนอกโฟลเดอร์เกม)
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -82,8 +82,8 @@ inject_lua_script() {
         saved_webhook=$(tr -d '\r\n' < "$WEBHOOK_FILE")
     fi
 
-    # 📌 แก้บั๊กความแลค: เจาะจงหาแค่ในโฟลเดอร์เกมของ Android เท่านั้น (ไม่สแกนทั้งเครื่องแล้ว)
-    su -c "find /storage/emulated/0/Android/data -maxdepth 8 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
+    # 📌 แก้บั๊ก: ค้นหาความลึก 4 ชั้นจากโฟลเดอร์หลัก เพื่อให้เจอโฟลเดอร์ Arceus X, Delta ฯลฯ ได้ไวและไม่ค้าง
+    su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
 
     if [[ ! -s "$TEMP_FOLDERS" ]]; then
         echo -e "${C_YELLOW}⚠️ ไม่พบโฟลเดอร์ Autoexec (ระบบอาจสร้างขึ้นหลังจากเปิดเกมรอบแรก)${C_RESET}"
@@ -502,8 +502,9 @@ setup_deep_scan() {
                 fi
             fi
 
+            # 📌 แก้บั๊ก: ค้นหาไฟล์ชีพจรในระดับ 4 ชั้น เพื่อให้เจอ Arceus X / Delta ได้
             if [[ -z "$uname" ]]; then
-                local ping_file=$(su -c "find /storage/emulated/0/Android/data/$pkg -type f -name 'ping_*.txt' 2>/dev/null | head -n 1")
+                local ping_file=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | grep -v 'Unknown' | head -n 1")
                 if [[ -n "$ping_file" ]]; then
                     local filename="${ping_file##*/}" 
                     uname="${filename#ping_}"         
@@ -682,7 +683,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop (แก้บั๊กความแลคแบบเจาะจงโฟลเดอร์)
+# เมนู 1: Rejoin Loop
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -773,9 +774,9 @@ start_auto_rejoin() {
             pkg="${pkgs[$i]}"
             uname="${unames[$i]}"
             
-            # 📌 แก้บั๊กหน่วง: สแกนเจาะจงเฉพาะในโฟลเดอร์เกมของจอนั้นๆ ทำให้เร็วขึ้น 100 เท่า!
+            # 📌 แก้บั๊ก: ค้นหาไฟล์ ping.txt นอกโฟลเดอร์เกมด้วย (เผื่อตัวรันไปสร้างใน Workspace)
             if [[ -z "${ping_paths[$i]}" ]]; then
-                local found_paths=$(su -c "find /storage/emulated/0/Android/data/$pkg -maxdepth 8 -type f -iname 'ping_${uname}.txt' 2>/dev/null")
+                local found_paths=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null")
                 local final_path=""
                 for f in $found_paths; do
                     final_path="$f"
