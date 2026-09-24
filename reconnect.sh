@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v10.1 (Deep Link Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v10.2 (Explicit VIP Mode) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -588,7 +588,7 @@ draw_dashboard() {
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอเข้าแมพ (รองรับ VIP Server แบบปลอดภัย)
+# ฟังก์ชันเปิดจอเข้าแมพ (ดึงเข้าเกม)
 # ==========================================
 relaunch_pkg() {
     local p="$1"
@@ -650,7 +650,7 @@ relaunch_pkg() {
     colors[$idx]="$C_GREEN"
     draw_dashboard
     
-    # สร้างลิงก์ยิงเข้าเกม (รองรับ Place ID, VIP Code และ Ticket)
+    # 📌 จัดเตรียมลิงก์ (ปลอดภัยจากการถูก Android ตัดคำสั่ง)
     local launch_url="roblox://placeId=${place_id}"
     
     if [[ -n "$vip_code" ]]; then
@@ -661,7 +661,7 @@ relaunch_pkg() {
         launch_url="${launch_url}&ticket=${ticket}"
     fi
     
-    # 📌 ใช้เครื่องหมาย Single Quote (') ล็อค URL ไม่ให้ตัว & ไปรวนกับระบบ Android
+    # 📌 ใช้ Single Quote ล็อคลิงก์ ป้องกัน & รวน
     safe_su "am start -a android.intent.action.VIEW -d '${launch_url}' -p '${p}'"
     
     launch_times[$idx]=$(date +%s)
@@ -675,7 +675,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop (รองรับการใส่ลิงก์ VIP)
+# เมนู 1: Rejoin Loop (แยกเมนู Public / VIP)
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -694,23 +694,40 @@ start_auto_rejoin() {
     show_header
 
     echo -e "${C_CYAN}--- Auto Rejoin Setup ---${C_RESET}"
-    echo -e "${C_YELLOW}💡 คุณสามารถพิมพ์ Place ID ตัวเลข หรือวางลิงก์เซิร์ฟเวอร์ VIP เต็มๆ ได้เลย${C_RESET}"
-    read -p "🎯 Enter Place ID หรือ ลิงก์ VIP Server: " input_place
-    
-    # ตัดช่องว่างซ่อนเร้นที่อาจติดมาจากการ Copy
-    input_place=$(echo "$input_place" | tr -d '\r\n ')
-    if [[ -z "$input_place" ]]; then return; fi
+    echo -e "${C_YELLOW}กรุณาเลือกรูปแบบการเข้าเกม (พิมพ์ 1 หรือ 2):${C_RESET}"
+    echo -e "  ${C_GREEN}1.${C_RESET} Public Server (เซิร์ฟรวม / ใส่แค่ Place ID)"
+    echo -e "  ${C_GREEN}2.${C_RESET} VIP Server (เซิร์ฟส่วนตัว / ใส่ลิงก์ VIP เต็มๆ)"
+    echo ""
+    read -p "🎯 เลือกโหมด: " mode_choice
 
     place_id=""
     vip_code=""
-    
-    if [[ "$input_place" == *"privateServerLinkCode="* ]]; then
-        place_id=$(echo "$input_place" | awk -F'games/' '{print $2}' | awk -F'/' '{print $1}' | tr -d '\r\n ')
-        vip_code=$(echo "$input_place" | awk -F'privateServerLinkCode=' '{print $2}' | awk -F'&' '{print $1}' | tr -d '\r\n ')
-        echo -e "${C_GREEN}✔️ ตรวจพบลิงก์ VIP Server! (Place ID: $place_id)${C_RESET}"
-        sleep 1
+
+    if [[ "$mode_choice" == "1" ]]; then
+        read -p "🎯 ใส่ Place ID ตัวเลข: " input_place
+        place_id=$(echo "$input_place" | tr -d '\r\n ')
+        if [[ -z "$place_id" ]]; then return; fi
+        
+    elif [[ "$mode_choice" == "2" ]]; then
+        read -p "🔗 วางลิงก์ VIP Server ทั้งหมด: " input_place
+        input_place=$(echo "$input_place" | tr -d '\r\n ')
+        if [[ -z "$input_place" ]]; then return; fi
+        
+        # 📌 ระบบแยก ID และ Code 
+        place_id=$(echo "$input_place" | awk -F'games/' '{print $2}' | awk -F'/' '{print $1}')
+        vip_code=$(echo "$input_place" | awk -F'privateServerLinkCode=' '{print $2}' | awk -F'&' '{print $1}')
+        
+        if [[ -z "$vip_code" \vert{}\vert{} -z "$place_id" ]]; then
+            echo -e "${C_RED}❌ ลิงก์ไม่ถูกต้อง! ไม่สามารถดึง Place ID หรือ Link Code ได้${C_RESET}"
+            sleep 3
+            return
+        fi
+        echo -e "${C_GREEN}✔️ ดึงข้อมูล VIP สำเร็จ! (PlaceID: $place_id | Code: ${vip_code:0:5}...)${C_RESET}"
+        sleep 2
     else
-        place_id="$input_place"
+        echo -e "${C_RED}❌ เลือกโหมดไม่ถูกต้อง!${C_RESET}"
+        sleep 2
+        return
     fi
 
     read -p "⏳ หน่วงเวลาระหว่างเปิดจอรอบแรกกี่วิ? (แนะนำ 5-10): " delay_between
