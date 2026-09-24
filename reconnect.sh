@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}    v10.9 (Space Path Fix & UI) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}    v11.0 (Time Sync Fix & UI) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -72,7 +72,7 @@ check_root() {
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ (แก้ไขให้ค้นหาครอบคลุมตัวรันนอกโฟลเดอร์เกม)
+# ฝัง Lua อัตโนมัติ
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -82,7 +82,6 @@ inject_lua_script() {
         saved_webhook=$(tr -d '\r\n' < "$WEBHOOK_FILE")
     fi
 
-    # 📌 ค้นหาความลึก 4 ชั้นจากโฟลเดอร์หลัก เพื่อให้เจอโฟลเดอร์ Arceus X, Delta ฯลฯ ได้ไวและไม่ค้าง
     su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
 
     if [[ ! -s "$TEMP_FOLDERS" ]]; then
@@ -151,7 +150,7 @@ EOF
 }
 
 # ==========================================
-# เมนู 5: รันล็อคอินเข้าหน้าแรก (ไม่เข้าแมพ)
+# เมนู 5: รันล็อคอินเข้าหน้าแรก
 # ==========================================
 execute_cookie_login() {
     clear
@@ -213,7 +212,7 @@ execute_cookie_login() {
 }
 
 # ==========================================
-# เมนู 4: ระบบใส่ Cookie (จากไฟล์)
+# เมนู 4: ระบบใส่ Cookie
 # ==========================================
 setup_cookie() {
     clear
@@ -502,7 +501,6 @@ setup_deep_scan() {
                 fi
             fi
 
-            # 📌 แก้บั๊ก: ค้นหาไฟล์ชีพจรในระดับ 4 ชั้น
             if [[ -z "$uname" ]]; then
                 local ping_file=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | grep -v 'Unknown' | head -n 1")
                 if [[ -n "$ping_file" ]]; then
@@ -538,7 +536,7 @@ setup_deep_scan() {
 }
 
 # ==========================================
-# เมนู 2: เลือกโหมด Auto Setup (แยกเมนูย่อย)
+# เมนู 2: เลือกโหมด Auto Setup
 # ==========================================
 start_auto_setup_menu() {
     while true; do
@@ -590,12 +588,16 @@ draw_dashboard() {
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอเข้าแมพ (ดึงเข้าเกม)
+# ฟังก์ชันเปิดจอเข้าแมพ
 # ==========================================
 relaunch_pkg() {
     local p="$1"
     local idx="$2"
     
+    # 📌 รีเซ็ตหน่วยความจำเวลาของจอนี้
+    last_ping_values[$idx]=""
+    last_ping_times[$idx]=""
+
     statuses[$idx]="ล้างแคช..."
     colors[$idx]="$C_CYAN"
     draw_dashboard
@@ -683,7 +685,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop
+# เมนู 1: Rejoin Loop (Time Sync & Change Detection Fix)
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -753,10 +755,13 @@ start_auto_rejoin() {
         return
     fi
 
+    # 📌 สร้างตัวแปรจดจำสถานะไฟล์
     statuses=()
     colors=()
     ping_paths=()
     launch_times=()
+    last_ping_values=()
+    last_ping_times=()
 
     tput civis 
 
@@ -774,9 +779,13 @@ start_auto_rejoin() {
             pkg="${pkgs[$i]}"
             uname="${unames[$i]}"
             
-            # 📌 แก้บั๊ก: ใช้คำสั่ง head -n 1 ดึงไฟล์โดยตรงเพื่อหลบปัญหาระบบแยกคำเมื่อเจอโฟลเดอร์ชื่อเว้นวรรค (เช่น Arceus X)
             if [[ -z "${ping_paths[$i]}" ]]; then
-                local final_path=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null | head -n 1" | tr -d '\r\n')
+                local found_paths=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null")
+                local final_path=""
+                for f in $found_paths; do
+                    final_path="$f"
+                    break
+                done
                 if [[ -n "$final_path" ]]; then ping_paths[$i]="$final_path"; fi
             fi
 
@@ -788,32 +797,29 @@ start_auto_rejoin() {
                     colors[$i]="$C_RED"
                     draw_dashboard
                     relaunch_pkg "$pkg" "$i"
-                elif [[ "$last_ping" =~ ^[0-9]+$ ]]; then
-                    diff=$((current_time - last_ping))
-                    if (( diff > 60 )); then
-                        statuses[$i]="หลุด! (Dead > 60s)"
-                        colors[$i]="$C_RED"
-                        draw_dashboard
-                        relaunch_pkg "$pkg" "$i"
-                    else
-                        statuses[$i]="ออนไลน์ (${diff}s ก่อน)"
+                elif [[ -n "$last_ping" ]]; then
+                    # 📌 ระบบใหม่: ตรวจสอบแค่ว่า "ข้อความเปลี่ยนไปจากเดิมหรือไม่" ถ้าเปลี่ยนคือออนไลน์ชัวร์
+                    if [[ "${last_ping_values[$i]}" != "$last_ping" ]]; then
+                        last_ping_values[$i]="$last_ping"
+                        last_ping_times[$i]=$current_time
+                        statuses[$i]="ออนไลน์ (อัปเดตล่าสุด)"
                         colors[$i]="$C_GREEN"
-                    fi
-                else
-                    launched_at=${launch_times[$i]:-0}
-                    wait_time=$((current_time - launched_at))
-                    if (( wait_time > 150 )); then 
-                        statuses[$i]="จอค้าง! (Timeout)"
-                        colors[$i]="$C_RED"
-                        draw_dashboard
-                        relaunch_pkg "$pkg" "$i"
                     else
-                        # 📌 เปลี่ยนข้อความเป็น 'กำลังโหลดสคริปต์...'
-                        statuses[$i]="กำลังโหลดสคริปต์ (${wait_time}s)"
-                        colors[$i]="$C_YELLOW"
+                        # 📌 ถ้าข้อความไม่เปลี่ยนเลยเกิน 60 วิ ถึงจะถือว่าหลุดจริงๆ
+                        diff=$((current_time -${last_ping_times[$i]:-$current_time}))
+                        if (( diff > 60 )); then
+                            statuses[$i]="หลุด! (ไม่ได้อัปเดต > 60s)"
+                            colors[$i]="$C_RED"
+                            draw_dashboard
+                            relaunch_pkg "$pkg" "$i"
+                        else
+                            statuses[$i]="ออนไลน์ (${diff}s ก่อน)"
+                            colors[$i]="$C_GREEN"
+                        fi
                     fi
                 fi
             else
+                # 📌 เปลี่ยนข้อความเป็น กำลังโหลดสคริปต์
                 launched_at=${launch_times[$i]:-0}
                 wait_time=$((current_time - launched_at))
                 if (( wait_time > 150 )); then 
@@ -822,7 +828,6 @@ start_auto_rejoin() {
                     draw_dashboard
                     relaunch_pkg "$pkg" "$i"
                 else
-                    # 📌 เปลี่ยนข้อความเป็น 'กำลังโหลดสคริปต์...'
                     statuses[$i]="กำลังโหลดสคริปต์ (${wait_time}s)"
                     colors[$i]="$C_YELLOW"
                 fi
