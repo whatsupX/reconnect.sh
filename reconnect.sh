@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}    v11.0 (Time Sync Fix & UI) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}    v11.1 (Crash Detector & Fast Scan) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -594,7 +594,6 @@ relaunch_pkg() {
     local p="$1"
     local idx="$2"
     
-    # 📌 รีเซ็ตหน่วยความจำเวลาของจอนี้
     last_ping_values[$idx]=""
     last_ping_times[$idx]=""
 
@@ -680,12 +679,12 @@ relaunch_pkg() {
     fi
     ping_paths[$idx]=""
     
-    statuses[$idx]="กำลังโหลด (Loading)"
+    statuses[$idx]="กำลังโหลดสคริปต์..."
     colors[$idx]="$C_YELLOW"
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop (Time Sync & Change Detection Fix)
+# เมนู 1: Rejoin Loop (Crash Detector & Fast Scan)
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -755,7 +754,6 @@ start_auto_rejoin() {
         return
     fi
 
-    # 📌 สร้างตัวแปรจดจำสถานะไฟล์
     statuses=()
     colors=()
     ping_paths=()
@@ -778,17 +776,33 @@ start_auto_rejoin() {
         for i in "${!pkgs[@]}"; do
             pkg="${pkgs[$i]}"
             uname="${unames[$i]}"
+            launched_at=${launch_times[$i]:-0}
+            wait_time=$((current_time - launched_at))
             
+            # 📌 1. Crash Detector: เช็คว่าตัวแอปปิดตัวไปเองหรือยัง (เช็คหลังผ่านไป 15 วิ)
+            if (( wait_time > 15 )); then
+                local is_alive=$(su -c "pidof $pkg" 2>/dev/null)
+                if [[ -z "$is_alive" ]]; then
+                    # เผื่อกรณี pidof ไม่ทำงาน ใช้ ps ตรวจสอบซ้ำ
+                    is_alive=$(su -c "ps -A \vert{} grep $pkg" 2>/dev/null)
+                    if [[ -z "$is_alive" ]]; then
+                        statuses[$i]="จอเด้งหลุด! (App Crash)"
+                        colors[$i]="$C_RED"
+                        draw_dashboard
+                        relaunch_pkg "$pkg" "$i"
+                        continue
+                    fi
+                fi
+            fi
+
+            # 📌 2. Fast Scan: ค้นหาไฟล์ชีพจรเฉพาะในโฟลเดอร์เกม เพื่อป้องกันสคริปต์สแกนจนค้าง
             if [[ -z "${ping_paths[$i]}" ]]; then
-                local found_paths=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null")
-                local final_path=""
-                for f in $found_paths; do
-                    final_path="$f"
-                    break
-                done
+                local target_dirs="/storage/emulated/0/Android/data/$pkg /storage/emulated/0/Arceus* /storage/emulated/0/Delta* /storage/emulated/0/codex* /storage/emulated/0/Workspace* /storage/emulated/0/Roblox*"
+                local final_path=$(su -c "find $target_dirs -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null | head -n 1" | tr -d '\r\n')
                 if [[ -n "$final_path" ]]; then ping_paths[$i]="$final_path"; fi
             fi
 
+            # 📌 3. ตรวจสอบสถานะการเชื่อมต่อ
             if [[ -n "${ping_paths[$i]}" ]]; then
                 last_ping=$(su -c "cat '${ping_paths[$i]}'" 2>/dev/null | tr -d '\r\n ')
                 
@@ -798,14 +812,12 @@ start_auto_rejoin() {
                     draw_dashboard
                     relaunch_pkg "$pkg" "$i"
                 elif [[ -n "$last_ping" ]]; then
-                    # 📌 ระบบใหม่: ตรวจสอบแค่ว่า "ข้อความเปลี่ยนไปจากเดิมหรือไม่" ถ้าเปลี่ยนคือออนไลน์ชัวร์
                     if [[ "${last_ping_values[$i]}" != "$last_ping" ]]; then
                         last_ping_values[$i]="$last_ping"
                         last_ping_times[$i]=$current_time
                         statuses[$i]="ออนไลน์ (อัปเดตล่าสุด)"
                         colors[$i]="$C_GREEN"
                     else
-                        # 📌 ถ้าข้อความไม่เปลี่ยนเลยเกิน 60 วิ ถึงจะถือว่าหลุดจริงๆ
                         diff=$((current_time -${last_ping_times[$i]:-$current_time}))
                         if (( diff > 60 )); then
                             statuses[$i]="หลุด! (ไม่ได้อัปเดต > 60s)"
@@ -819,9 +831,6 @@ start_auto_rejoin() {
                     fi
                 fi
             else
-                # 📌 เปลี่ยนข้อความเป็น กำลังโหลดสคริปต์
-                launched_at=${launch_times[$i]:-0}
-                wait_time=$((current_time - launched_at))
                 if (( wait_time > 150 )); then 
                     statuses[$i]="จอค้าง! (Timeout)"
                     colors[$i]="$C_RED"
