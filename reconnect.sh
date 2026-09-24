@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}    v10.4 (Share Link Resolver) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v10.5 (Direct Link Injection) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -588,7 +588,7 @@ draw_dashboard() {
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอเข้าแมพ (ดึงเข้าเกม)
+# ฟังก์ชันเปิดจอเข้าแมพ (รองรับทุกลิงก์)
 # ==========================================
 relaunch_pkg() {
     local p="$1"
@@ -650,16 +650,27 @@ relaunch_pkg() {
     colors[$idx]="$C_GREEN"
     draw_dashboard
     
-    local launch_url="roblox://placeId=${place_id}"
+    # 📌 สร้างลิงก์เข้าเกมจากโหมดที่ผู้ใช้เลือก (โยนลิงก์เข้าเกมตรงๆ)
+    local launch_url=""
     
-    if [[ -n "$vip_code" ]]; then
-        launch_url="${launch_url}&linkCode=${vip_code}"
+    if [[ "$mode_choice" == "1" ]]; then
+        launch_url="roblox://placeId=${place_id}"
+        if [[ -n "$ticket" ]]; then
+            launch_url="${launch_url}&ticket=${ticket}"
+        fi
+    elif [[ "$mode_choice" == "2" ]]; then
+        launch_url="${raw_url}"
+        if [[ -n "$ticket" ]]; then
+            # เช็คว่าลิงก์มีเครื่องหมาย ? หรือยัง เพื่อต่อท้ายด้วย ticket ให้ถูกต้อง
+            if [[ "$launch_url" == *"?"* ]]; then
+                launch_url="${launch_url}&ticket=${ticket}"
+            else
+                launch_url="${launch_url}?ticket=${ticket}"
+            fi
+        fi
     fi
     
-    if [[ -n "$ticket" ]]; then
-        launch_url="${launch_url}&ticket=${ticket}"
-    fi
-    
+    # 📌 ใช้ Single Quote ป้องกันบั๊กสัญลักษณ์ & ในระบบ Android
     safe_su "am start -a android.intent.action.VIEW -d '${launch_url}' -p '${p}'"
     
     launch_times[$idx]=$(date +%s)
@@ -673,7 +684,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop (รองรับการใส่ลิงก์ VIP)
+# เมนู 1: Rejoin Loop (โหมด Direct Link)
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -699,37 +710,21 @@ start_auto_rejoin() {
     read -p "🎯 เลือกโหมด: " mode_choice
 
     place_id=""
-    vip_code=""
+    raw_url=""
 
+    # 📌 ยกเลิกระบบแยกคำ เอาลิงก์ยัดตรงๆ
     if [[ "$mode_choice" == "1" ]]; then
         read -p "🎯 ใส่ Place ID ตัวเลข: " input_place
         place_id=$(echo "$input_place" | tr -d '\r\n ')
         if [[ -z "$place_id" ]]; then return; fi
+        echo -e "${C_GREEN}✔️ บันทึก Place ID สำเร็จ!${C_RESET}"
+        sleep 1
         
     elif [[ "$mode_choice" == "2" ]]; then
-        read -p "🔗 วางลิงก์ VIP Server ทั้งหมด: " input_place
-        input_place=$(echo "$input_place" | tr -d '\r\n ')
-        if [[ -z "$input_place" ]]; then return; fi
-        
-        # 📌 ระบบแปลงลิงก์ Share เป็นลิงก์ VIP ปกติ
-        if [[ "$input_place" == *"/share?code="* ]]; then
-            echo -e "${C_YELLOW}🔄 กำลังตรวจสอบและแปลงลิงก์ Share...${C_RESET}"
-            input_place=$(curl -s -I "$input_place" | grep -i '^location:' | awk '{print $2}' | tr -d '\r\n')
-        fi
-        
-        place_id=$(echo "$input_place" | awk -F'games/' '{print $2}' | awk -F'/' '{print $1}')
-        vip_code=$(echo "$input_place" | awk -F'privateServerLinkCode=' '{print $2}' | awk -F'&' '{print $1}')
-        
-        if [[ -z "$vip_code" ]]; then
-            echo -e "${C_RED}❌ ลิงก์ไม่ถูกต้อง! ไม่สามารถดึง Link Code ได้${C_RESET}"
-            sleep 3
-            return
-        elif [[ -z "$place_id" ]]; then
-            echo -e "${C_RED}❌ ลิงก์ไม่ถูกต้อง! ไม่สามารถดึง Place ID ได้${C_RESET}"
-            sleep 3
-            return
-        fi
-        echo -e "${C_GREEN}✔️ ดึงข้อมูล VIP สำเร็จ! (PlaceID: $place_id | Code: ${vip_code:0:5}...)${C_RESET}"
+        read -p "🔗 วางลิงก์ VIP / Share Link ทั้งหมด: " input_place
+        raw_url=$(echo "$input_place" | tr -d '\r\n ')
+        if [[ -z "$raw_url" ]]; then return; fi
+        echo -e "${C_GREEN}✔️ บันทึกลิงก์สำเร็จ! ระบบจะใช้ลิงก์นี้ดึงเข้าแมพโดยตรง${C_RESET}"
         sleep 2
     else
         echo -e "${C_RED}❌ เลือกโหมดไม่ถูกต้อง!${C_RESET}"
