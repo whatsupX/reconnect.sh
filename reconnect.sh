@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v10.6 (Deep Path Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}    v10.7 (Anti-Freeze Fast Path) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -72,7 +72,7 @@ check_root() {
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ (เพิ่มความลึกในการค้นหาเป็น 10)
+# ฝัง Lua อัตโนมัติ (สแกนแบบกำหนดเป้าหมายเพื่อลดความแลค)
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -82,8 +82,8 @@ inject_lua_script() {
         saved_webhook=$(tr -d '\r\n' < "$WEBHOOK_FILE")
     fi
 
-    # 📌 แก้บั๊ก: เพิ่ม maxdepth เป็น 10 เพื่อให้มุดหาใน /Android/data/... ลึกๆ ได้
-    su -c "find /storage/emulated/0 -maxdepth 10 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
+    # 📌 แก้บั๊กความแลค: เจาะจงหาแค่ในโฟลเดอร์เกมของ Android เท่านั้น (ไม่สแกนทั้งเครื่องแล้ว)
+    su -c "find /storage/emulated/0/Android/data -maxdepth 8 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
 
     if [[ ! -s "$TEMP_FOLDERS" ]]; then
         echo -e "${C_YELLOW}⚠️ ไม่พบโฟลเดอร์ Autoexec (ระบบอาจสร้างขึ้นหลังจากเปิดเกมรอบแรก)${C_RESET}"
@@ -485,7 +485,7 @@ setup_deep_scan() {
             echo -e "${C_CYAN}🔍 ตรวจสอบจอ: ${pkg}...${C_RESET}"
             local uname=""
             
-            local extracted_cookie=$(su -c "grep -a -r -m 1 -h -o '_\vert{}WARNING:-DO-NOT-SHARE-THIS[^<\"]*' /data/data/$pkg/ 2>/dev/null" | tr -d '\r\n')
+            local extracted_cookie=$(su -c "grep -a -r -m 1 -h -o '_|WARNING:-DO-NOT-SHARE-THIS[^<\"]*' /data/data/$pkg/ 2>/dev/null" | tr -d '\r\n')
             
             if [[ -n "$extracted_cookie" ]]; then
                 local api_res=$(curl -s -k -L -X GET "https://users.roblox.com/v1/users/authenticated" -H "Cookie: .ROBLOSECURITY=$extracted_cookie" -H "User-Agent: $UA")
@@ -682,7 +682,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop (โหมด Direct Link + Deep Search)
+# เมนู 1: Rejoin Loop (แก้บั๊กความแลคแบบเจาะจงโฟลเดอร์)
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -773,9 +773,9 @@ start_auto_rejoin() {
             pkg="${pkgs[$i]}"
             uname="${unames[$i]}"
             
-            # 📌 แก้บั๊ก: เพิ่มความลึกในการค้นหาไฟล์ชีพจรเป็น 10
+            # 📌 แก้บั๊กหน่วง: สแกนเจาะจงเฉพาะในโฟลเดอร์เกมของจอนั้นๆ ทำให้เร็วขึ้น 100 เท่า!
             if [[ -z "${ping_paths[$i]}" ]]; then
-                local found_paths=$(su -c "find /storage/emulated/0 -maxdepth 10 -type f -iname 'ping_${uname}.txt' 2>/dev/null")
+                local found_paths=$(su -c "find /storage/emulated/0/Android/data/$pkg -maxdepth 8 -type f -iname 'ping_${uname}.txt' 2>/dev/null")
                 local final_path=""
                 for f in $found_paths; do
                     final_path="$f"
