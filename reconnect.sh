@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}    v10.8 (Workspace Path Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}    v10.9 (Space Path Fix & UI) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -82,7 +82,7 @@ inject_lua_script() {
         saved_webhook=$(tr -d '\r\n' < "$WEBHOOK_FILE")
     fi
 
-    # 📌 แก้บั๊ก: ค้นหาความลึก 4 ชั้นจากโฟลเดอร์หลัก เพื่อให้เจอโฟลเดอร์ Arceus X, Delta ฯลฯ ได้ไวและไม่ค้าง
+    # 📌 ค้นหาความลึก 4 ชั้นจากโฟลเดอร์หลัก เพื่อให้เจอโฟลเดอร์ Arceus X, Delta ฯลฯ ได้ไวและไม่ค้าง
     su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
 
     if [[ ! -s "$TEMP_FOLDERS" ]]; then
@@ -502,7 +502,7 @@ setup_deep_scan() {
                 fi
             fi
 
-            # 📌 แก้บั๊ก: ค้นหาไฟล์ชีพจรในระดับ 4 ชั้น เพื่อให้เจอ Arceus X / Delta ได้
+            # 📌 แก้บั๊ก: ค้นหาไฟล์ชีพจรในระดับ 4 ชั้น
             if [[ -z "$uname" ]]; then
                 local ping_file=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | grep -v 'Unknown' | head -n 1")
                 if [[ -n "$ping_file" ]]; then
@@ -774,14 +774,9 @@ start_auto_rejoin() {
             pkg="${pkgs[$i]}"
             uname="${unames[$i]}"
             
-            # 📌 แก้บั๊ก: ค้นหาไฟล์ ping.txt นอกโฟลเดอร์เกมด้วย (เผื่อตัวรันไปสร้างใน Workspace)
+            # 📌 แก้บั๊ก: ใช้คำสั่ง head -n 1 ดึงไฟล์โดยตรงเพื่อหลบปัญหาระบบแยกคำเมื่อเจอโฟลเดอร์ชื่อเว้นวรรค (เช่น Arceus X)
             if [[ -z "${ping_paths[$i]}" ]]; then
-                local found_paths=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null")
-                local final_path=""
-                for f in $found_paths; do
-                    final_path="$f"
-                    break
-                done
+                local final_path=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null | head -n 1" | tr -d '\r\n')
                 if [[ -n "$final_path" ]]; then ping_paths[$i]="$final_path"; fi
             fi
 
@@ -813,7 +808,8 @@ start_auto_rejoin() {
                         draw_dashboard
                         relaunch_pkg "$pkg" "$i"
                     else
-                        statuses[$i]="รอข้อมูล (${wait_time}s)"
+                        # 📌 เปลี่ยนข้อความเป็น 'กำลังโหลดสคริปต์...'
+                        statuses[$i]="กำลังโหลดสคริปต์ (${wait_time}s)"
                         colors[$i]="$C_YELLOW"
                     fi
                 fi
@@ -826,7 +822,8 @@ start_auto_rejoin() {
                     draw_dashboard
                     relaunch_pkg "$pkg" "$i"
                 else
-                    statuses[$i]="รอสคริปต์ (${wait_time}s)"
+                    # 📌 เปลี่ยนข้อความเป็น 'กำลังโหลดสคริปต์...'
+                    statuses[$i]="กำลังโหลดสคริปต์ (${wait_time}s)"
                     colors[$i]="$C_YELLOW"
                 fi
             fi
