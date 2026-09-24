@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v10.3 (Syntax Parsing Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}    v10.4 (Share Link Resolver) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -484,7 +484,7 @@ setup_deep_scan() {
             echo -e "${C_CYAN}🔍 ตรวจสอบจอ: ${pkg}...${C_RESET}"
             local uname=""
             
-            local extracted_cookie=$(su -c "grep -a -r -m 1 -h -o '_\vert{}WARNING:-DO-NOT-SHARE-THIS[^<\"]*' /data/data/$pkg/ 2>/dev/null" | tr -d '\r\n')
+            local extracted_cookie=$(su -c "grep -a -r -m 1 -h -o '_|WARNING:-DO-NOT-SHARE-THIS[^<\"]*' /data/data/$pkg/ 2>/dev/null" | tr -d '\r\n')
             
             if [[ -n "$extracted_cookie" ]]; then
                 local api_res=$(curl -s -k -L -X GET "https://users.roblox.com/v1/users/authenticated" -H "Cookie: .ROBLOSECURITY=$extracted_cookie" -H "User-Agent: $UA")
@@ -673,7 +673,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop (แยกเมนู Public / VIP แบบแก้ Parse)
+# เมนู 1: Rejoin Loop (รองรับการใส่ลิงก์ VIP)
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -710,6 +710,12 @@ start_auto_rejoin() {
         read -p "🔗 วางลิงก์ VIP Server ทั้งหมด: " input_place
         input_place=$(echo "$input_place" | tr -d '\r\n ')
         if [[ -z "$input_place" ]]; then return; fi
+        
+        # 📌 ระบบแปลงลิงก์ Share เป็นลิงก์ VIP ปกติ
+        if [[ "$input_place" == *"/share?code="* ]]; then
+            echo -e "${C_YELLOW}🔄 กำลังตรวจสอบและแปลงลิงก์ Share...${C_RESET}"
+            input_place=$(curl -s -I "$input_place" | grep -i '^location:' | awk '{print $2}' | tr -d '\r\n')
+        fi
         
         place_id=$(echo "$input_place" | awk -F'games/' '{print $2}' | awk -F'/' '{print $1}')
         vip_code=$(echo "$input_place" | awk -F'privateServerLinkCode=' '{print $2}' | awk -F'&' '{print $1}')
