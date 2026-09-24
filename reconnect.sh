@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v9.8 (Ultimate Scan Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}    v9.9 (Menu Split & Input Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -158,7 +158,7 @@ execute_cookie_login() {
     echo -e "${C_CYAN}--- Execute Cookie Login (Home Screen) ---${C_RESET}"
     
     if [[ ! -s "$COOKIE_FILE" ]]; then
-        echo -e "${C_RED}❌ ไม่พบข้อมูล Cookie! กรุณาไปทำเมนู 4 หรือเมนู 2 เพื่อตั้งค่าก่อน${C_RESET}"
+        echo -e "${C_RED}❌ ไม่พบข้อมูล Cookie! กรุณาไปทำเมนู 4 เพื่อตั้งค่าก่อน${C_RESET}"
         sleep 3
         return
     fi
@@ -367,24 +367,80 @@ setup_webhook() {
 }
 
 # ==========================================
-# เมนู 2: ระบบสแกนจอและดึงชื่ออัตโนมัติ (Ultimate Scan)
+# เมนู 2.1: Manual Bind (พิมพ์ชื่อเอง)
 # ==========================================
-start_auto_setup() {
+setup_manual_bind() {
     clear
     show_header
-    echo -e "${C_CYAN}--- Automatic Setup (Ultimate Scan Mode) ---${C_RESET}"
+    echo -e "${C_CYAN}--- Auto Setup (Manual Bind) ---${C_RESET}"
     
-    if [[ -s "$CONFIG_FILE" ]]; then
-        echo -e "${C_YELLOW}⚠️ พบข้อมูลเดิมที่เคยบันทึกไว้!${C_RESET}"
-        read -p "❓ ต้องการตั้งค่าใหม่หรือไม่? (y/n) <กด Enter ยกเลิก>: " confirm_reset
-        if [[ "$confirm_reset" != "y" && "$confirm_reset" != "Y" ]]; then
-            echo -e "${C_GREEN}✅ คงข้อมูลเดิมไว้${C_RESET}"
-            sleep 2
-            return
+    > "temp_pkg.txt"
+    screen_count=0
+    for line in $(pm list packages); do
+        if [[ "${line,,}" == *roblox.clien* ]]; then
+            pkg_name="${line#package:}"
+            echo "$pkg_name" >> "temp_pkg.txt"
+            ((screen_count++))
+        fi
+    done
+    stty onlcr sane 2>/dev/null
+
+    if (( screen_count == 0 )); then
+        read -p "🔍 ไม่พบ 'roblox.clien' พิมพ์ชื่อแอป (เช่น arceus) เพื่อหาใหม่: " custom_pkg
+        if [[ -n "$custom_pkg" ]]; then
+            > "temp_pkg.txt"
+            for line in $(pm list packages); do
+                if [[ "${line,,}" == *"${custom_pkg,,}"* ]]; then
+                    pkg_name="${line#package:}"
+                    echo "$pkg_name" >> "temp_pkg.txt"
+                    ((screen_count++))
+                fi
+            done
+            stty onlcr sane 2>/dev/null
         fi
     fi
 
-    echo -e "${C_YELLOW}🔄 ระบบกำลังค้นหาแอปโคลนทั้งหมด...${C_RESET}"
+    if (( screen_count > 0 )); then
+        echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
+        echo ""
+        
+        local found_pkgs=()
+        while read -r line; do 
+            if [[ -n "$line" ]]; then found_pkgs+=("$line"); fi
+        done < "temp_pkg.txt"
+        
+        local input_data=()
+        for pkg in "${found_pkgs[@]}"; do
+            pkg="${pkg//[$'\t\r\n ']/}"
+            # รีเซ็ตคีย์บอร์ดให้มั่นใจว่าพิมพ์ได้แน่นอน
+            stty onlcr sane 2>/dev/null
+            read -p "👤 ใส่ Username ของจอ <$pkg>: " uname
+            if [[ -z "$uname" ]]; then uname="Unknown"; fi
+            input_data+=("$pkg:$uname")
+        done
+        
+        > "$CONFIG_FILE"
+        for data in "${input_data[@]}"; do
+            echo "$data" >> "$CONFIG_FILE"
+        done
+        
+        rm "temp_pkg.txt" 2>/dev/null
+        echo -e "\n${C_GREEN}🎉 บันทึกข้อมูลเรียบร้อยแล้ว!${C_RESET}"
+        sleep 2
+    else
+        echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย${C_RESET}"
+        rm "temp_pkg.txt" 2>/dev/null
+        sleep 2
+    fi
+}
+
+# ==========================================
+# เมนู 2.2: Deep Scan Auto Bind (สแกนอัตโนมัติ)
+# ==========================================
+setup_deep_scan() {
+    clear
+    show_header
+    echo -e "${C_CYAN}--- Auto Setup (Deep Scan Mode) ---${C_RESET}"
     
     > "temp_pkg.txt"
     screen_count=0
@@ -429,7 +485,7 @@ start_auto_setup() {
             echo -e "${C_CYAN}🔍 ตรวจสอบจอ: ${pkg}...${C_RESET}"
             local uname=""
             
-            # แก้ปัญหา Termux รวน โดยใช้คำสั่งรวบยอดไว้ใน Root ทั้งหมด
+            # โยนภาระทั้งหมดลง Root แบบป้องกันคีย์บอร์ดค้าง (ห้ามใส่ < /dev/null ตรงนี้)
             local extracted_cookie=$(su -c "grep -a -r -m 1 -h -o '_\vert{}WARNING:-DO-NOT-SHARE-THIS[^<\"]*' /data/data/$pkg/ 2>/dev/null" | tr -d '\r\n')
             
             if [[ -n "$extracted_cookie" ]]; then
@@ -447,7 +503,6 @@ start_auto_setup() {
                 fi
             fi
 
-            # ถ้าวิธีแรกหาไม่เจอ ให้ไปค้นหาไฟล์ชีพจรแทน
             if [[ -z "$uname" ]]; then
                 local ping_file=$(su -c "find /storage/emulated/0/Android/data/$pkg -type f -name 'ping_*.txt' 2>/dev/null | head -n 1")
                 if [[ -n "$ping_file" ]]; then
@@ -460,10 +515,12 @@ start_auto_setup() {
                 fi
             fi
 
-            # ถ้าสุดทางแล้วหาไม่เจอจริงๆ ค่อยให้พิมพ์เอง
+            # ถ้าหาไม่เจอจริงๆ ให้พิมพ์เอง (รีเซ็ตคีย์บอร์ดตรงนี้สำคัญมาก)
             if [[ -z "$uname" ]]; then
-                echo -e "${C_RED}   ⚠️ สแกนไม่พบข้อมูล กรุณาเข้าเกม 1 ครั้งแล้วสแกนใหม่ หรือพิมพ์ชื่อเอง${C_RESET}"
-                read -p "   👤 ใส่ Username (ปล่อยว่าง=Unknown): " uname
+                echo -e "${C_RED}   ⚠️ สแกนไม่พบข้อมูล (แอปอาจจะใหม่เกินไป หรือเข้ารหัสไว้)${C_RESET}"
+                stty onlcr sane 2>/dev/null
+                tput cnorm
+                read -p "   👤 โปรดพิมพ์ Username เอง (ปล่อยว่าง=Unknown): " uname
                 if [[ -z "$uname" ]]; then uname="Unknown"; fi
             fi
             
@@ -479,6 +536,32 @@ start_auto_setup() {
         rm "temp_pkg.txt" 2>/dev/null
         sleep 2
     fi
+}
+
+# ==========================================
+# เมนู 2: เลือกโหมด Auto Setup (แยกเมนูย่อย)
+# ==========================================
+start_auto_setup_menu() {
+    while true; do
+        clear
+        show_header
+        echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}               ${C_YELLOW}--- Auto Setup Options ---${C_RESET}               ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}├────────────────────────────────────────────────────────┤${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Manual Setup        ${C_YELLOW}พิมพ์ชื่อบัญชีผูกกับจอเอง${C_RESET}      ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Deep Scan (Beta)    ${C_YELLOW}สแกนหาชื่อในแอปอัตโนมัติ${C_RESET}       ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}                                                        ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}0${C_RESET}  Back                ${C_YELLOW}กลับสู่เมนูหลัก${C_RESET}                 ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}└────────────────────────────────────────────────────────┘${C_RESET}"
+        echo ""
+        read -p "select: " opt_setup
+        case $opt_setup in
+            1) setup_manual_bind; break ;;
+            2) setup_deep_scan; break ;;
+            0) break ;;
+            *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
+        esac
+    done
 }
 
 # ==========================================
@@ -733,7 +816,7 @@ while true; do
     show_header
     echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Start Auto Rejoin   ${C_YELLOW}Smart System${C_RESET}                   ${C_CYAN}│${C_RESET}"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Deep Scan & Bind${C_RESET}               ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Account Binding${C_RESET}                ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}3${C_RESET}  Manage Webhook      ${C_YELLOW}Discord Autoexec${C_RESET}               ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}4${C_RESET}  Setup Cookie Login  ${C_YELLOW}Import & Auto Bind${C_RESET}             ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}5${C_RESET}  Run Cookie Login    ${C_YELLOW}Login to Home Screen${C_RESET}           ${C_CYAN}│${C_RESET}"
@@ -744,7 +827,7 @@ while true; do
     read -p "select: " opt_main
     case $opt_main in
         1) start_auto_rejoin ;;
-        2) start_auto_setup ;;
+        2) start_auto_setup_menu ;;
         3) setup_webhook ;;
         4) setup_cookie ;;
         5) execute_cookie_login ;;
