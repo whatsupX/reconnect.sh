@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}    v9.9 (Menu Split & Input Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v10.0 (VIP Server Support) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -412,7 +412,6 @@ setup_manual_bind() {
         local input_data=()
         for pkg in "${found_pkgs[@]}"; do
             pkg="${pkg//[$'\t\r\n ']/}"
-            # รีเซ็ตคีย์บอร์ดให้มั่นใจว่าพิมพ์ได้แน่นอน
             stty onlcr sane 2>/dev/null
             read -p "👤 ใส่ Username ของจอ <$pkg>: " uname
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
@@ -485,7 +484,6 @@ setup_deep_scan() {
             echo -e "${C_CYAN}🔍 ตรวจสอบจอ: ${pkg}...${C_RESET}"
             local uname=""
             
-            # โยนภาระทั้งหมดลง Root แบบป้องกันคีย์บอร์ดค้าง (ห้ามใส่ < /dev/null ตรงนี้)
             local extracted_cookie=$(su -c "grep -a -r -m 1 -h -o '_\vert{}WARNING:-DO-NOT-SHARE-THIS[^<\"]*' /data/data/$pkg/ 2>/dev/null" | tr -d '\r\n')
             
             if [[ -n "$extracted_cookie" ]]; then
@@ -515,7 +513,6 @@ setup_deep_scan() {
                 fi
             fi
 
-            # ถ้าหาไม่เจอจริงๆ ให้พิมพ์เอง (รีเซ็ตคีย์บอร์ดตรงนี้สำคัญมาก)
             if [[ -z "$uname" ]]; then
                 echo -e "${C_RED}   ⚠️ สแกนไม่พบข้อมูล (แอปอาจจะใหม่เกินไป หรือเข้ารหัสไว้)${C_RESET}"
                 stty onlcr sane 2>/dev/null
@@ -591,7 +588,7 @@ draw_dashboard() {
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอเข้าแมพ (สำหรับเมนู 1)
+# ฟังก์ชันเปิดจอเข้าแมพ (รองรับ VIP Server)
 # ==========================================
 relaunch_pkg() {
     local p="$1"
@@ -653,11 +650,18 @@ relaunch_pkg() {
     colors[$idx]="$C_GREEN"
     draw_dashboard
     
-    if [[ -n "$ticket" ]]; then
-        safe_su "am start -a android.intent.action.VIEW -d \"roblox://placeId=$place_id&ticket=$ticket\" -p \"$p\""
-    else
-        safe_su "am start -a android.intent.action.VIEW -d \"roblox://placeId=$place_id\" -p \"$p\""
+    # สร้างลิงก์ยิงเข้าเกม (รองรับ Place ID, VIP Code และ Ticket)
+    local launch_url="roblox://placeId=$place_id"
+    
+    if [[ -n "$vip_code" ]]; then
+        launch_url="${launch_url}&linkCode=${vip_code}"
     fi
+    
+    if [[ -n "$ticket" ]]; then
+        launch_url="${launch_url}&ticket=${ticket}"
+    fi
+    
+    safe_su "am start -a android.intent.action.VIEW -d \"$launch_url\" -p \"$p\""
     
     launch_times[$idx]=$(date +%s)
     if [[ -n "${ping_paths[$idx]}" ]]; then
@@ -670,7 +674,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop
+# เมนู 1: Rejoin Loop (รองรับการใส่ลิงก์ VIP)
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -689,8 +693,22 @@ start_auto_rejoin() {
     show_header
 
     echo -e "${C_CYAN}--- Auto Rejoin Setup ---${C_RESET}"
-    read -p "🎯 Enter Place ID: " place_id
-    if [[ -z "$place_id" ]]; then return; fi
+    echo -e "${C_YELLOW}💡 คุณสามารถพิมพ์ Place ID ตัวเลข หรือวางลิงก์เซิร์ฟเวอร์ VIP เต็มๆ ได้เลย${C_RESET}"
+    read -p "🎯 Enter Place ID หรือ ลิงก์ VIP Server: " input_place
+    if [[ -z "$input_place" ]]; then return; fi
+
+    place_id=""
+    vip_code=""
+    
+    # ระบบแยก Place ID และ VIP Code ออกจากลิงก์อัตโนมัติ
+    if [[ "$input_place" == *"privateServerLinkCode="* ]]; then
+        place_id=$(echo "$input_place" | awk -F'games/' '{print $2}' | awk -F'/' '{print $1}')
+        vip_code=$(echo "$input_place" | awk -F'privateServerLinkCode=' '{print $2}' | awk -F'&' '{print $1}')
+        echo -e "${C_GREEN}✔️ ตรวจพบลิงก์ VIP Server! (Place ID: $place_id)${C_RESET}"
+        sleep 1
+    else
+        place_id="$input_place"
+    fi
 
     read -p "⏳ หน่วงเวลาระหว่างเปิดจอรอบแรกกี่วิ? (แนะนำ 5-10): " delay_between
     if [[ ! "$delay_between" =~ ^[0-9]+$ ]]; then delay_between=7; fi
