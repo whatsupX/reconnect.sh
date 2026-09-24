@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v10.0 (VIP Server Support) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v10.1 (Deep Link Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -158,7 +158,7 @@ execute_cookie_login() {
     echo -e "${C_CYAN}--- Execute Cookie Login (Home Screen) ---${C_RESET}"
     
     if [[ ! -s "$COOKIE_FILE" ]]; then
-        echo -e "${C_RED}❌ ไม่พบข้อมูล Cookie! กรุณาไปทำเมนู 4 เพื่อตั้งค่าก่อน${C_RESET}"
+        echo -e "${C_RED}❌ ไม่พบข้อมูล Cookie! กรุณาไปทำเมนู 4 หรือเมนู 2 เพื่อตั้งค่าก่อน${C_RESET}"
         sleep 3
         return
     fi
@@ -194,7 +194,7 @@ execute_cookie_login() {
                 
                 if [[ -n "$ticket" ]]; then
                     echo -e "${C_GREEN}✅ ได้รับ Ticket สำเร็จ! กำลังส่งเข้าหน้าแรก...${C_RESET}"
-                    safe_su "am start -a android.intent.action.VIEW -d \"roblox://?ticket=$ticket\" -p \"$pkg\""
+                    safe_su "am start -a android.intent.action.VIEW -d 'roblox://?ticket=$ticket' -p '$pkg'"
                 else
                     echo -e "${C_RED}❌ ขอ Ticket ไม่สำเร็จ (Cookie อาจหมดอายุหรือติด IP Lock)${C_RESET}"
                 fi
@@ -588,7 +588,7 @@ draw_dashboard() {
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอเข้าแมพ (รองรับ VIP Server)
+# ฟังก์ชันเปิดจอเข้าแมพ (รองรับ VIP Server แบบปลอดภัย)
 # ==========================================
 relaunch_pkg() {
     local p="$1"
@@ -651,7 +651,7 @@ relaunch_pkg() {
     draw_dashboard
     
     # สร้างลิงก์ยิงเข้าเกม (รองรับ Place ID, VIP Code และ Ticket)
-    local launch_url="roblox://placeId=$place_id"
+    local launch_url="roblox://placeId=${place_id}"
     
     if [[ -n "$vip_code" ]]; then
         launch_url="${launch_url}&linkCode=${vip_code}"
@@ -661,7 +661,8 @@ relaunch_pkg() {
         launch_url="${launch_url}&ticket=${ticket}"
     fi
     
-    safe_su "am start -a android.intent.action.VIEW -d \"$launch_url\" -p \"$p\""
+    # 📌 ใช้เครื่องหมาย Single Quote (') ล็อค URL ไม่ให้ตัว & ไปรวนกับระบบ Android
+    safe_su "am start -a android.intent.action.VIEW -d '${launch_url}' -p '${p}'"
     
     launch_times[$idx]=$(date +%s)
     if [[ -n "${ping_paths[$idx]}" ]]; then
@@ -695,15 +696,17 @@ start_auto_rejoin() {
     echo -e "${C_CYAN}--- Auto Rejoin Setup ---${C_RESET}"
     echo -e "${C_YELLOW}💡 คุณสามารถพิมพ์ Place ID ตัวเลข หรือวางลิงก์เซิร์ฟเวอร์ VIP เต็มๆ ได้เลย${C_RESET}"
     read -p "🎯 Enter Place ID หรือ ลิงก์ VIP Server: " input_place
+    
+    # ตัดช่องว่างซ่อนเร้นที่อาจติดมาจากการ Copy
+    input_place=$(echo "$input_place" | tr -d '\r\n ')
     if [[ -z "$input_place" ]]; then return; fi
 
     place_id=""
     vip_code=""
     
-    # ระบบแยก Place ID และ VIP Code ออกจากลิงก์อัตโนมัติ
     if [[ "$input_place" == *"privateServerLinkCode="* ]]; then
-        place_id=$(echo "$input_place" | awk -F'games/' '{print $2}' | awk -F'/' '{print $1}')
-        vip_code=$(echo "$input_place" | awk -F'privateServerLinkCode=' '{print $2}' | awk -F'&' '{print $1}')
+        place_id=$(echo "$input_place" | awk -F'games/' '{print $2}' | awk -F'/' '{print $1}' | tr -d '\r\n ')
+        vip_code=$(echo "$input_place" | awk -F'privateServerLinkCode=' '{print $2}' | awk -F'&' '{print $1}' | tr -d '\r\n ')
         echo -e "${C_GREEN}✔️ ตรวจพบลิงก์ VIP Server! (Place ID: $place_id)${C_RESET}"
         sleep 1
     else
