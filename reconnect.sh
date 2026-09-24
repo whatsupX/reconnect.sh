@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v10.2 (Explicit VIP Mode) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v10.3 (Syntax Parsing Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -650,7 +650,6 @@ relaunch_pkg() {
     colors[$idx]="$C_GREEN"
     draw_dashboard
     
-    # 📌 จัดเตรียมลิงก์ (ปลอดภัยจากการถูก Android ตัดคำสั่ง)
     local launch_url="roblox://placeId=${place_id}"
     
     if [[ -n "$vip_code" ]]; then
@@ -661,7 +660,6 @@ relaunch_pkg() {
         launch_url="${launch_url}&ticket=${ticket}"
     fi
     
-    # 📌 ใช้ Single Quote ล็อคลิงก์ ป้องกัน & รวน
     safe_su "am start -a android.intent.action.VIEW -d '${launch_url}' -p '${p}'"
     
     launch_times[$idx]=$(date +%s)
@@ -675,7 +673,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop (แยกเมนู Public / VIP)
+# เมนู 1: Rejoin Loop (แยกเมนู Public / VIP แบบแก้ Parse)
 # ==========================================
 start_auto_rejoin() {
     clear
@@ -713,12 +711,15 @@ start_auto_rejoin() {
         input_place=$(echo "$input_place" | tr -d '\r\n ')
         if [[ -z "$input_place" ]]; then return; fi
         
-        # 📌 ระบบแยก ID และ Code 
         place_id=$(echo "$input_place" | awk -F'games/' '{print $2}' | awk -F'/' '{print $1}')
         vip_code=$(echo "$input_place" | awk -F'privateServerLinkCode=' '{print $2}' | awk -F'&' '{print $1}')
         
-        if [[ -z "$vip_code" \vert{}\vert{} -z "$place_id" ]]; then
-            echo -e "${C_RED}❌ ลิงก์ไม่ถูกต้อง! ไม่สามารถดึง Place ID หรือ Link Code ได้${C_RESET}"
+        if [[ -z "$vip_code" ]]; then
+            echo -e "${C_RED}❌ ลิงก์ไม่ถูกต้อง! ไม่สามารถดึง Link Code ได้${C_RESET}"
+            sleep 3
+            return
+        elif [[ -z "$place_id" ]]; then
+            echo -e "${C_RED}❌ ลิงก์ไม่ถูกต้อง! ไม่สามารถดึง Place ID ได้${C_RESET}"
             sleep 3
             return
         fi
