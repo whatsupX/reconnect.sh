@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v9.6 (Deep Scan Auto Bind) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v9.8 (Ultimate Scan Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -367,12 +367,12 @@ setup_webhook() {
 }
 
 # ==========================================
-# เมนู 2: ระบบสแกนจอและดึงชื่ออัตโนมัติ (Deep Scan)
+# เมนู 2: ระบบสแกนจอและดึงชื่ออัตโนมัติ (Ultimate Scan)
 # ==========================================
 start_auto_setup() {
     clear
     show_header
-    echo -e "${C_CYAN}--- Automatic Setup (Deep Scan Mode) ---${C_RESET}"
+    echo -e "${C_CYAN}--- Automatic Setup (Ultimate Scan Mode) ---${C_RESET}"
     
     if [[ -s "$CONFIG_FILE" ]]; then
         echo -e "${C_YELLOW}⚠️ พบข้อมูลเดิมที่เคยบันทึกไว้!${C_RESET}"
@@ -429,8 +429,8 @@ start_auto_setup() {
             echo -e "${C_CYAN}🔍 ตรวจสอบจอ: ${pkg}...${C_RESET}"
             local uname=""
             
-            # วิธีที่ 1: แอบสแกนหา Cookie ในตัวเกม
-            local extracted_cookie=$(su -c "grep -a -h -r -o '_\vert{}WARNING:-DO-NOT-SHARE-THIS[A-Za-z0-9\-\.\_\Vert{}]*' /data/data/$pkg/ 2>/dev/null | head -n 1" | tr -d '\r\n')
+            # แก้ปัญหา Termux รวน โดยใช้คำสั่งรวบยอดไว้ใน Root ทั้งหมด
+            local extracted_cookie=$(su -c "grep -a -r -m 1 -h -o '_\vert{}WARNING:-DO-NOT-SHARE-THIS[^<\"]*' /data/data/$pkg/ 2>/dev/null" | tr -d '\r\n')
             
             if [[ -n "$extracted_cookie" ]]; then
                 local api_res=$(curl -s -k -L -X GET "https://users.roblox.com/v1/users/authenticated" -H "Cookie: .ROBLOSECURITY=$extracted_cookie" -H "User-Agent: $UA")
@@ -439,7 +439,6 @@ start_auto_setup() {
                 if [[ -n "$uname" ]]; then
                     echo -e "${C_GREEN}   ✔️ เจอคุกกี้! ดึงชื่อสำเร็จ: 👤 $uname${C_RESET}"
                     
-                    # บันทึกคุกกี้ให้เลยถ้ายังไม่เคยบันทึก
                     if ! grep -q "^$pkg " "$COOKIE_FILE" 2>/dev/null; then
                         echo "$pkg $extracted_cookie" >> "$COOKIE_FILE"
                         echo -e "${C_PURPLE}   ✔️ นำคุกกี้บันทึกลงระบบ Auto-Login ให้อัตโนมัติ!${C_RESET}"
@@ -448,23 +447,23 @@ start_auto_setup() {
                 fi
             fi
 
-            # วิธีที่ 2: สแกนหาจากไฟล์ชีพจร (ping.txt)
+            # ถ้าวิธีแรกหาไม่เจอ ให้ไปค้นหาไฟล์ชีพจรแทน
             if [[ -z "$uname" ]]; then
                 local ping_file=$(su -c "find /storage/emulated/0/Android/data/$pkg -type f -name 'ping_*.txt' 2>/dev/null | head -n 1")
                 if [[ -n "$ping_file" ]]; then
-                    local filename="${ping_file##*/}" # ได้คำว่า ping_Username.txt
-                    uname="${filename#ping_}"         # หั่น ping_ ออก
-                    uname="${uname%.txt}"             # หั่น .txt ออก
+                    local filename="${ping_file##*/}" 
+                    uname="${filename#ping_}"         
+                    uname="${uname%.txt}"             
                     if [[ -n "$uname" ]]; then
                         echo -e "${C_GREEN}   ✔️ ดึงชื่อจากไฟล์ชีพจรสำเร็จ: 👤 $uname${C_RESET}"
                     fi
                 fi
             fi
 
-            # วิธีที่ 3: ถ้าสแกนไม่เจออะไรเลย ให้พิมพ์เอง
+            # ถ้าสุดทางแล้วหาไม่เจอจริงๆ ค่อยให้พิมพ์เอง
             if [[ -z "$uname" ]]; then
-                echo -e "${C_RED}   ⚠️ ไม่พบข้อมูลที่ล็อกอินไว้ กรุณาพิมพ์ชื่อตัวละครเอง${C_RESET}"
-                read -p "   👤 ใส่ Username: " uname
+                echo -e "${C_RED}   ⚠️ สแกนไม่พบข้อมูล กรุณาเข้าเกม 1 ครั้งแล้วสแกนใหม่ หรือพิมพ์ชื่อเอง${C_RESET}"
+                read -p "   👤 ใส่ Username (ปล่อยว่าง=Unknown): " uname
                 if [[ -z "$uname" ]]; then uname="Unknown"; fi
             fi
             
