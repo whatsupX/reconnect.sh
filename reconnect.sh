@@ -30,17 +30,27 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # ==========================================
+# ฟังก์ชันรีเซ็ตหน้าจอขั้นเด็ดขาด (Nuclear Reset)
+# ==========================================
+reset_ui() {
+    stty sane 2>/dev/null
+    stty onlcr 2>/dev/null
+    printf "\033c" # รหัส ANSI ล้างการตั้งค่าเทอร์มินัลทั้งหมด
+    clear
+}
+
+# ==========================================
 # ฟังก์ชันแสดงส่วนหัว
 # ==========================================
 show_header() {
-    echo -e "${C_CYAN}██╗    ██╗██╗  ██╗ █████╗ ████████╗███████╗██╗   ██╗██████╗ ██╗  ██╗${C_RESET}\r"
-    echo -e "${C_CYAN}██║    ██║██║  ██║██╔══██╗╚══██╔══╝██╔════╝██║   ██║██╔══██╗╚██╗██╔╝${C_RESET}\r"
-    echo -e "${C_CYAN}██║ █╗ ██║███████║███████║   ██║   ███████╗██║   ██║██████╔╝ ╚███╔╝ ${C_RESET}\r"
-    echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}\r"
-    echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}\r"
-    echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}\r"
-    echo -e "${C_YELLOW}            v11.9 (UI Alignment Fix) :: Made by whatsupX${C_RESET}\r"
-    echo -e "\r"
+    echo -e "${C_CYAN}██╗    ██╗██╗  ██╗ █████╗ ████████╗███████╗██╗   ██╗██████╗ ██╗  ██╗${C_RESET}"
+    echo -e "${C_CYAN}██║    ██║██║  ██║██╔══██╗╚══██╔══╝██╔════╝██║   ██║██╔══██╗╚██╗██╔╝${C_RESET}"
+    echo -e "${C_CYAN}██║ █╗ ██║███████║███████║   ██║   ███████╗██║   ██║██████╔╝ ╚███╔╝ ${C_RESET}"
+    echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
+    echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
+    echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
+    echo -e "${C_YELLOW}           v12.0 (Terminal Nuke Fix) :: Made by whatsupX${C_RESET}"
+    echo ""
 }
 
 # ==========================================
@@ -54,25 +64,24 @@ safe_su() {
 # ระบบตรวจสอบ Root
 # ==========================================
 check_root() {
-    stty onlcr sane 2>/dev/null
-    clear
+    reset_ui
     show_header
-    echo -e "${C_CYAN}🔍 กำลังตรวจสอบสิทธิ์ Root ในเครื่อง...${C_RESET}\r"
+    echo -e "${C_CYAN}🔍 กำลังตรวจสอบสิทธิ์ Root ในเครื่อง...${C_RESET}"
     
     if ! su -c 'true' < /dev/null > /dev/null 2>&1; then
-        echo -e "${C_RED}❌ ตรวจพบว่าเครื่องของคุณยังไม่ได้ Root!${C_RESET}\r"
+        echo -e "${C_RED}❌ ตรวจพบว่าเครื่องของคุณยังไม่ได้ Root!${C_RESET}"
         exit 1
     else
-        echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว!${C_RESET}\r"
+        echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว!${C_RESET}"
         sleep 1
     fi
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ (กลับไปใช้ Username)
+# ฝัง Lua อัตโนมัติ 
 # ==========================================
 inject_lua_script() {
-    echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}\r"
+    echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
     
     local saved_webhook=""
     if [[ -f "$WEBHOOK_FILE" ]]; then
@@ -82,7 +91,7 @@ inject_lua_script() {
     su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
 
     if [[ ! -s "$TEMP_FOLDERS" ]]; then
-        echo -e "${C_YELLOW}⚠️ ไม่พบโฟลเดอร์ Autoexec (ระบบอาจสร้างขึ้นหลังจากเปิดเกมรอบแรก)${C_RESET}\r"
+        echo -e "${C_YELLOW}⚠️ ไม่พบโฟลเดอร์ Autoexec (ระบบอาจสร้างขึ้นหลังจากเปิดเกมรอบแรก)${C_RESET}"
         sleep 2
         return
     fi
@@ -137,7 +146,7 @@ EOF
             local target_path="$folder/$LUA_FILENAME"
             su -c "cp '$TEMP_LUA' '$target_path' 2>/dev/null"
             su -c "chmod 777 '$target_path' 2>/dev/null"
-            echo -e "${C_GREEN}✔️ ฝังสคริปต์อัปเดตลงใน: $folder${C_RESET}\r"
+            echo -e "${C_GREEN}✔️ ฝังสคริปต์อัปเดตลงใน: $folder${C_RESET}"
         fi
     done < "$TEMP_FOLDERS"
 
@@ -150,17 +159,17 @@ EOF
 # เมนู 5: รันล็อคอินเข้าหน้าแรก
 # ==========================================
 execute_cookie_login() {
-    clear
+    reset_ui
     show_header
-    echo -e "${C_CYAN}--- Execute Cookie Login (Home Screen) ---${C_RESET}\r"
+    echo -e "${C_CYAN}--- Execute Cookie Login (Home Screen) ---${C_RESET}"
     
     if [[ ! -s "$COOKIE_FILE" ]]; then
-        echo -e "${C_RED}❌ ไม่พบข้อมูล Cookie! กรุณาไปทำเมนู 4 หรือเมนู 2 เพื่อตั้งค่าก่อน${C_RESET}\r"
+        echo -e "${C_RED}❌ ไม่พบข้อมูล Cookie! กรุณาไปทำเมนู 4 หรือเมนู 2 เพื่อตั้งค่าก่อน${C_RESET}"
         sleep 3
         return
     fi
 
-    echo -e "${C_YELLOW}🚀 กำลังเริ่มกระบวนการล็อคอินเข้าหน้าแรกทีละจอ...${C_RESET}\r"
+    echo -e "${C_YELLOW}🚀 กำลังเริ่มกระบวนการล็อคอินเข้าหน้าแรกทีละจอ...${C_RESET}"
     
     while read -r line; do
         if [[ -z "$line" ]]; then continue; fi
@@ -169,12 +178,12 @@ execute_cookie_login() {
         local active_cookie=$(echo "$line" | cut -d' ' -f2-)
         
         if [[ -n "$pkg" && -n "$active_cookie" ]]; then
-            echo -e "\n${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}${C_RESET}\r"
+            echo -e "\n${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}${C_RESET}"
             
             safe_su "am force-stop $pkg"
             sleep 2
             
-            echo -e "${C_YELLOW}🔄 กำลังขอ Ticket จากเซิร์ฟเวอร์ Roblox...${C_RESET}\r"
+            echo -e "${C_YELLOW}🔄 กำลังขอ Ticket จากเซิร์ฟเวอร์ Roblox...${C_RESET}"
             local csrf=$(curl -s -k -L -I -X POST "https://auth.roblox.com/v2/logout" \
                 -H "Cookie: .ROBLOSECURITY=$active_cookie" \
                 -H "User-Agent: $UA" \
@@ -190,21 +199,21 @@ execute_cookie_login() {
                     | grep -i 'rbx-authentication-ticket:' | awk '{print $2}' | tr -d '\r\n')
                 
                 if [[ -n "$ticket" ]]; then
-                    echo -e "${C_GREEN}✅ ได้รับ Ticket สำเร็จ! กำลังส่งเข้าหน้าแรก...${C_RESET}\r"
+                    echo -e "${C_GREEN}✅ ได้รับ Ticket สำเร็จ! กำลังส่งเข้าหน้าแรก...${C_RESET}"
                     safe_su "am start -a android.intent.action.VIEW -d 'roblox://?ticket=$ticket' -p '$pkg'"
                 else
-                    echo -e "${C_RED}❌ ขอ Ticket ไม่สำเร็จ (Cookie อาจหมดอายุหรือติด IP Lock)${C_RESET}\r"
+                    echo -e "${C_RED}❌ ขอ Ticket ไม่สำเร็จ (Cookie อาจหมดอายุหรือติด IP Lock)${C_RESET}"
                 fi
             else
-                echo -e "${C_RED}❌ ขอ CSRF Token ไม่สำเร็จ (Cookie ไม่ถูกต้อง)${C_RESET}\r"
+                echo -e "${C_RED}❌ ขอ CSRF Token ไม่สำเร็จ (Cookie ไม่ถูกต้อง)${C_RESET}"
             fi
             
-            echo -e "${C_YELLOW}⏳ รอ 5 วินาทีเพื่อดำเนินการจอถัดไป...${C_RESET}\r"
+            echo -e "${C_YELLOW}⏳ รอ 5 วินาทีเพื่อดำเนินการจอถัดไป...${C_RESET}"
             sleep 5
         fi
     done < "$COOKIE_FILE"
     
-    echo -e "\n${C_GREEN}🎉 กระบวนการล็อคอินเสร็จสิ้นทั้งหมดแล้ว!${C_RESET}\r"
+    echo -e "\n${C_GREEN}🎉 กระบวนการล็อคอินเสร็จสิ้นทั้งหมดแล้ว!${C_RESET}"
     read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
 }
 
@@ -212,9 +221,9 @@ execute_cookie_login() {
 # เมนู 4: ระบบใส่ Cookie
 # ==========================================
 setup_cookie() {
-    clear
+    reset_ui
     show_header
-    echo -e "${C_CYAN}--- Setup Cookie & Auto Bind Accounts ---${C_RESET}\r"
+    echo -e "${C_CYAN}--- Setup Cookie & Auto Bind Accounts ---${C_RESET}"
     
     > "temp_pkg.txt"
     screen_count=0
@@ -227,7 +236,7 @@ setup_cookie() {
     done
 
     if (( screen_count == 0 )); then
-        echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}\r"
+        echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
         read -p "🔍 พิมพ์ชื่อแอป (เช่น roblox, arceus) เพื่อหาใหม่: " custom_pkg
         if [[ -n "$custom_pkg" ]]; then
             > "temp_pkg.txt"
@@ -242,22 +251,22 @@ setup_cookie() {
     fi
 
     if (( screen_count == 0 )); then
-        echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย ยกเลิกการทำรายการ${C_RESET}\r"
+        echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย ยกเลิกการทำรายการ${C_RESET}"
         rm "temp_pkg.txt" 2>/dev/null
         sleep 2
         return
     fi
 
-    echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอในเครื่องนี้!${C_RESET}\r"
+    echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอในเครื่องนี้!${C_RESET}"
 
     if [[ ! -f "$DL_COOKIE_FILE" ]]; then
-        echo -e "${C_GREEN}สร้างไฟล์ให้ใหม่แล้วที่: Download/cookie.txt${C_RESET}\r"
+        echo -e "${C_GREEN}สร้างไฟล์ให้ใหม่แล้วที่: Download/cookie.txt${C_RESET}"
         echo "# วาง Cookie ของคุณไว้ที่นี่ (1 บรรทัดต่อ 1 จอ)" > "$DL_COOKIE_FILE"
     fi
 
-    echo -e "\n${C_YELLOW}💡 กรุณาเปิดแอปจัดการไฟล์ ไปที่โฟลเดอร์ Download${C_RESET}\r"
-    echo -e "${C_YELLOW}💡 เปิดไฟล์ cookie.txt แล้ววาง Cookie ลงไปให้เรียบร้อย${C_RESET}\r"
-    echo -e "${C_RED}⚠️ เมื่อใส่เสร็จแล้ว ให้กลับมาที่นี่แล้วกด Enter เพื่อยืนยัน${C_RESET}\r\n"
+    echo -e "\n${C_YELLOW}💡 กรุณาเปิดแอปจัดการไฟล์ ไปที่โฟลเดอร์ Download${C_RESET}"
+    echo -e "${C_YELLOW}💡 เปิดไฟล์ cookie.txt แล้ววาง Cookie ลงไปให้เรียบร้อย${C_RESET}"
+    echo -e "${C_RED}⚠️ เมื่อใส่เสร็จแล้ว ให้กลับมาที่นี่แล้วกด Enter เพื่อยืนยัน${C_RESET}\n"
 
     read -p "กด Enter เพื่อให้ระบบเริ่มดึงข้อมูลจากไฟล์..."
 
@@ -278,14 +287,14 @@ setup_cookie() {
     local cookie_count=${#found_cookies[@]}
     
     if (( cookie_count == 0 )); then
-        echo -e "\n${C_RED}❌ ไม่พบ Cookie ในไฟล์ หรือไฟล์ว่างเปล่า!${C_RESET}\r"
+        echo -e "\n${C_RED}❌ ไม่พบ Cookie ในไฟล์ หรือไฟล์ว่างเปล่า!${C_RESET}"
         rm "temp_pkg.txt" 2>/dev/null
         sleep 3
         return
     fi
 
-    echo -e "\n${C_CYAN}📌 อ่าน Cookie จากไฟล์ได้ทั้งหมด: $cookie_count ไอดี${C_RESET}\r"
-    echo -e "${C_YELLOW}⏳ กำลังตรวจสอบ Cookie และดึง Username อัตโนมัติจาก Roblox...${C_RESET}\r\n"
+    echo -e "\n${C_CYAN}📌 อ่าน Cookie จากไฟล์ได้ทั้งหมด: $cookie_count ไอดี${C_RESET}"
+    echo -e "${C_YELLOW}⏳ กำลังตรวจสอบ Cookie และดึง Username อัตโนมัติจาก Roblox...${C_RESET}\n"
     
     > "$COOKIE_FILE"
     > "$CONFIG_FILE" 
@@ -305,10 +314,10 @@ setup_cookie() {
             local uname=$(echo "$api_res" | grep -o '"name":"[^"]*' | head -n 1 | awk -F'"' '{print $4}')
             
             if [[ -z "$uname" ]]; then
-                echo -e "${C_RED}❌ จอ $pkg: Cookie หมดอายุ หรือติด IP Lock! (ตั้งเป็น Unknown)${C_RESET}\r"
+                echo -e "${C_RED}❌ จอ $pkg: Cookie หมดอายุ หรือติด IP Lock! (ตั้งเป็น Unknown)${C_RESET}"
                 uname="Unknown"
             else
-                echo -e "${C_GREEN}✔️ จอ $pkg ผูกกับ Username: 👤 $uname${C_RESET}\r"
+                echo -e "${C_GREEN}✔️ จอ $pkg ผูกกับ Username: 👤 $uname${C_RESET}"
             fi
             
             echo "$pkg $cookie_val" >> "$COOKIE_FILE"
@@ -319,7 +328,7 @@ setup_cookie() {
     
     rm "temp_pkg.txt" 2>/dev/null
     
-    echo -e "\n${C_GREEN}🎉 บันทึก Cookie และผูกบัญชีสำเร็จ! (ดำเนินการให้ $assigned จอ)${C_RESET}\r"
+    echo -e "\n${C_GREEN}🎉 บันทึก Cookie และผูกบัญชีสำเร็จ! (ดำเนินการให้ $assigned จอ)${C_RESET}"
     sleep 4
 }
 
@@ -327,32 +336,32 @@ setup_cookie() {
 # เมนู 3: จัดการ Webhook
 # ==========================================
 setup_webhook() {
-    clear
+    reset_ui
     show_header
-    echo -e "${C_CYAN}--- Manage Discord Webhook ---${C_RESET}\r"
+    echo -e "${C_CYAN}--- Manage Discord Webhook ---${C_RESET}"
     
     if [[ -f "$WEBHOOK_FILE" ]]; then
         local current_hook=$(tr -d '\r\n' < "$WEBHOOK_FILE")
-        echo -e "${C_YELLOW}📌 Webhook ปัจจุบัน: ${current_hook}${C_RESET}\r"
+        echo -e "${C_YELLOW}📌 Webhook ปัจจุบัน: ${current_hook}${C_RESET}"
     else
-        echo -e "${C_YELLOW}📌 Webhook ปัจจุบัน: (ยังไม่ได้ตั้งค่า)${C_RESET}\r"
+        echo -e "${C_YELLOW}📌 Webhook ปัจจุบัน: (ยังไม่ได้ตั้งค่า)${C_RESET}"
     fi
 
-    echo -e "${C_YELLOW}< กด Enter โดยไม่พิมพ์อะไร เพื่อใช้ข้อมูลเดิม หรือยกเลิก >${C_RESET}\r"
-    echo -e "${C_YELLOW}< พิมพ์คำว่า 'clear' เพื่อลบ Webhook ทิ้ง >${C_RESET}\r"
+    echo -e "${C_YELLOW}< กด Enter โดยไม่พิมพ์อะไร เพื่อใช้ข้อมูลเดิม หรือยกเลิก >${C_RESET}"
+    echo -e "${C_YELLOW}< พิมพ์คำว่า 'clear' เพื่อลบ Webhook ทิ้ง >${C_RESET}"
     read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook ใหม่: " webhook_url
     
     if [[ "$webhook_url" == "clear" ]]; then
         rm "$WEBHOOK_FILE" 2>/dev/null
-        echo -e "${C_GREEN}✅ ลบ Webhook เรียบร้อยแล้ว!${C_RESET}\r"
+        echo -e "${C_GREEN}✅ ลบ Webhook เรียบร้อยแล้ว!${C_RESET}"
     elif [[ -n "$webhook_url" ]]; then
         echo "$webhook_url" > "$WEBHOOK_FILE"
-        echo -e "${C_GREEN}✅ บันทึก Webhook เรียบร้อยแล้ว!${C_RESET}\r"
+        echo -e "${C_GREEN}✅ บันทึก Webhook เรียบร้อยแล้ว!${C_RESET}"
     fi
 
     inject_lua_script
     
-    echo -e "\r"
+    echo ""
     read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
 }
 
@@ -360,9 +369,9 @@ setup_webhook() {
 # เมนู 2.1: Manual Bind
 # ==========================================
 setup_manual_bind() {
-    clear
+    reset_ui
     show_header
-    echo -e "${C_CYAN}--- Auto Setup (Manual Bind) ---${C_RESET}\r"
+    echo -e "${C_CYAN}--- Auto Setup (Manual Bind) ---${C_RESET}"
     
     > "temp_pkg.txt"
     screen_count=0
@@ -389,8 +398,8 @@ setup_manual_bind() {
     fi
 
     if (( screen_count > 0 )); then
-        echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}\r"
-        echo -e "\r"
+        echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
+        echo ""
         
         local found_pkgs=()
         while read -r line; do 
@@ -411,22 +420,22 @@ setup_manual_bind() {
         done
         
         rm "temp_pkg.txt" 2>/dev/null
-        echo -e "\n${C_GREEN}🎉 บันทึกข้อมูลเรียบร้อยแล้ว!${C_RESET}\r"
+        echo -e "\n${C_GREEN}🎉 บันทึกข้อมูลเรียบร้อยแล้ว!${C_RESET}"
         sleep 2
     else
-        echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย${C_RESET}\r"
+        echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย${C_RESET}"
         rm "temp_pkg.txt" 2>/dev/null
         sleep 2
     fi
 }
 
 # ==========================================
-# เมนู 2.2: Smart Launch Scan (อัปเดตแก้อาการตัวหนังสือเละ)
+# เมนู 2.2: Smart Launch Scan 
 # ==========================================
 setup_smart_scan() {
-    clear
+    reset_ui
     show_header
-    echo -e "${C_CYAN}--- Auto Setup (Smart Launch Scan) ---${C_RESET}\r"
+    echo -e "${C_CYAN}--- Auto Setup (Smart Launch Scan) ---${C_RESET}"
 
     inject_lua_script
 
@@ -455,9 +464,9 @@ setup_smart_scan() {
     fi
 
     if (( screen_count > 0 )); then
-        echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}\r"
-        echo -e "${C_YELLOW}🚀 ระบบจะเปิดเข้าแมพสุ่ม (Natural Disaster) ทีละจอเพื่อบังคับดึงชื่อ${C_RESET}\r"
-        echo -e "${C_YELLOW}⚠️ ห้ามแตะหน้าจอระหว่างนี้! สคริปต์จะดึงชื่อและปิดจอให้เองเมื่อเสร็จสิ้น...${C_RESET}\r\n"
+        echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
+        echo -e "${C_YELLOW}🚀 ระบบจะเปิดเข้าแมพสุ่ม (Natural Disaster) ทีละจอเพื่อบังคับดึงชื่อ${C_RESET}"
+        echo -e "${C_YELLOW}⚠️ ห้ามแตะหน้าจอระหว่างนี้! สคริปต์จะดึงชื่อและปิดจอให้เองเมื่อเสร็จสิ้น...${C_RESET}\n"
         
         local found_pkgs=()
         while read -r line; do 
@@ -470,16 +479,16 @@ setup_smart_scan() {
         for pkg in "${found_pkgs[@]}"; do
             pkg="${pkg//[$'\t\r\n ']/}"
             
-            # บังคับขึ้นบรรทัดใหม่และรีเซ็ตเคอร์เซอร์
-            echo -e "\r"
-            echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}\r"
+            # ล้างหน้าจอก่อนสแกนแต่ละจอ เพื่อความสะอาด
+            reset_ui
+            show_header
+            echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}"
             
             su -c "am force-stop $pkg" > /dev/null 2>&1
-            # ใช้คำสั่งลบที่ปลอดภัยกว่า เพื่อไม่ให้มันเผลอพ่นชื่อไฟล์ติดช่องว่างออกมา
             su -c "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_*.txt' -exec rm -f {} + >/dev/null 2>&1"
             sleep 2
             
-            echo -e "${C_YELLOW}   ⏳ กำลังส่งเข้าแมพและรอสคริปต์สร้างไฟล์ชีพจร (รอสูงสุด 90 วิ)...${C_RESET}\r"
+            echo -e "${C_YELLOW}   ⏳ กำลังส่งเข้าแมพและรอสคริปต์สร้างไฟล์ชีพจร (รอสูงสุด 90 วิ)...${C_RESET}"
             su -c "am start -a android.intent.action.VIEW -d 'roblox://placeId=$random_place' -p '$pkg'" > /dev/null 2>&1
             
             local uname=""
@@ -487,7 +496,6 @@ setup_smart_scan() {
             local elapsed=0
             
             while (( elapsed < timeout )); do
-                # 📌 ลบการค้นหาแบบเฉพาะเจาะจงโฟลเดอร์ทิ้ง ป้องกันบั๊กเว้นวรรค
                 local ping_file=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | head -n 1" | tr -d '\r\n')
                 
                 if [[ -n "$ping_file" ]]; then
@@ -509,13 +517,15 @@ setup_smart_scan() {
             su -c "am start -n com.termux/com.termux.app.TermuxActivity" > /dev/null 2>&1
             sleep 1
             
-            # 📌 รีเซ็ตการตั้งค่าเทอร์มินัลให้เป็นปกติทุกครั้งที่กลับมาหน้า Termux
-            stty onlcr sane 2>/dev/null
+            # ซ่อมหน้าจอทุกครั้งที่โดนดึงกลับมา
+            reset_ui
+            show_header
+            echo -e "${C_CYAN}📱 ดำเนินการจอ: ${pkg} เสร็จสิ้น${C_RESET}"
             
             if [[ -n "$uname" ]]; then
-                echo -e "${C_GREEN}   ✔️ สำเร็จ! ดึงชื่อจากชีพจรได้: 👤 $uname${C_RESET}\r"
+                echo -e "${C_GREEN}   ✔️ สำเร็จ! ดึงชื่อจากชีพจรได้: 👤 $uname${C_RESET}"
             else
-                echo -e "${C_RED}   ⚠️ หมดเวลา! ไม่พบไฟล์ชีพจร (แอปอาจค้าง หรือไม่ได้ล็อกอินไอดีไว้)${C_RESET}\r"
+                echo -e "${C_RED}   ⚠️ หมดเวลา! ไม่พบไฟล์ชีพจร (แอปอาจค้าง หรือไม่ได้ล็อกอินไอดีไว้)${C_RESET}"
                 read -p "   👤 โปรดพิมพ์ Username เอง (ปล่อยว่าง=Unknown): " uname
                 if [[ -z "$uname" ]]; then uname="Unknown"; fi
             fi
@@ -525,10 +535,10 @@ setup_smart_scan() {
         done
         
         rm "temp_pkg.txt" 2>/dev/null
-        echo -e "\r\n${C_GREEN}🎉 บันทึกข้อมูลและผูกหน้าจอเรียบร้อยแล้ว!${C_RESET}\r"
+        echo -e "\n${C_GREEN}🎉 บันทึกข้อมูลและผูกหน้าจอเรียบร้อยแล้ว!${C_RESET}"
         sleep 4
     else
-        echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย${C_RESET}\r"
+        echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย${C_RESET}"
         rm "temp_pkg.txt" 2>/dev/null
         sleep 2
     fi
@@ -539,24 +549,23 @@ setup_smart_scan() {
 # ==========================================
 start_auto_setup_menu() {
     while true; do
-        stty onlcr sane 2>/dev/null
-        clear
+        reset_ui
         show_header
-        echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}\r"
-        echo -e "${C_CYAN}│${C_RESET}               ${C_YELLOW}--- Auto Setup Options ---${C_RESET}               ${C_CYAN}│${C_RESET}\r"
-        echo -e "${C_CYAN}├────────────────────────────────────────────────────────┤${C_RESET}\r"
-        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Manual Setup        ${C_YELLOW}พิมพ์ชื่อบัญชีผูกกับจอเอง${C_RESET}      ${C_CYAN}│${C_RESET}\r"
-        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Smart Launch Scan   ${C_YELLOW}สแกนโดยเปิดเข้าแมพทีละจอ${C_RESET}       ${C_CYAN}│${C_RESET}\r"
-        echo -e "${C_CYAN}│${C_RESET}                                                        ${C_CYAN}│${C_RESET}\r"
-        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}0${C_RESET}  Back                ${C_YELLOW}กลับสู่เมนูหลัก${C_RESET}                 ${C_CYAN}│${C_RESET}\r"
-        echo -e "${C_CYAN}└────────────────────────────────────────────────────────┘${C_RESET}\r"
-        echo -e "\r"
+        echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}               ${C_YELLOW}--- Auto Setup Options ---${C_RESET}               ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}├────────────────────────────────────────────────────────┤${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Manual Setup        ${C_YELLOW}พิมพ์ชื่อบัญชีผูกกับจอเอง${C_RESET}      ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Smart Launch Scan   ${C_YELLOW}สแกนโดยเปิดเข้าแมพทีละจอ${C_RESET}       ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}                                                        ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}0${C_RESET}  Back                ${C_YELLOW}กลับสู่เมนูหลัก${C_RESET}                 ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}└────────────────────────────────────────────────────────┘${C_RESET}"
+        echo ""
         read -p "select: " opt_setup
         case $opt_setup in
             1) setup_manual_bind; break ;;
             2) setup_smart_scan; break ;;
             0) break ;;
-            *) echo -e "${C_RED}Invalid option!${C_RESET}\r"; sleep 1 ;;
+            *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
         esac
     done
 }
@@ -565,27 +574,25 @@ start_auto_setup_menu() {
 # ระบบวาดตาราง Dashboard 
 # ==========================================
 draw_dashboard() {
-    stty onlcr sane 2>/dev/null
-    clear
+    reset_ui
     show_header
-    echo -e "${C_CYAN}--- 📊 Smart Rejoin Dashboard ---${C_RESET}\r"
-    echo -e "▶️ สถานะระบบ: ${global_msg}\r"
-    echo -e "\r"
+    echo -e "${C_CYAN}--- 📊 Smart Rejoin Dashboard ---${C_RESET}"
+    echo -e "▶️ สถานะระบบ: ${global_msg}"
     
-    echo -e "${C_CYAN}┌──────────────────┬──────────────────┬──────────────────────┐${C_RESET}\r"
-    printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-20s ${C_CYAN}│${C_RESET}\r\n" "Package" "Account" "Status"
-    echo -e "${C_CYAN}├──────────────────┼──────────────────┼──────────────────────┤${C_RESET}\r"
+    echo -e "${C_CYAN}┌──────────────────┬──────────────────┬──────────────────────┐${C_RESET}"
+    printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-20s ${C_CYAN}│${C_RESET}\n" "Package" "Account" "Status"
+    echo -e "${C_CYAN}├──────────────────┼──────────────────┼──────────────────────┤${C_RESET}"
     
     for j in "${!pkgs[@]}"; do
         local pkg="${pkgs[$j]}"
         local acc="${unames[$j]}"
         local stat="${statuses[$j]}"
         local col="${colors[$j]}"
-        printf "${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET}${col}%-20s${C_RESET}${C_CYAN}│${C_RESET}\r\n" "$pkg" "$acc" "$stat"
+        printf "${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET}${col}%-20s${C_RESET}${C_CYAN}│${C_RESET}\n" "$pkg" "$acc" "$stat"
     done
     
-    echo -e "${C_CYAN}└──────────────────┴──────────────────┴──────────────────────┘${C_RESET}\r"
-    echo -e "${C_RED}< กด Ctrl+C เพื่อหยุดการทำงาน >${C_RESET}\r"
+    echo -e "${C_CYAN}└──────────────────┴──────────────────┴──────────────────────┘${C_RESET}"
+    echo -e "${C_RED}< กด Ctrl+C เพื่อหยุดการทำงาน >${C_RESET}"
 }
 
 # ==========================================
@@ -687,27 +694,25 @@ relaunch_pkg() {
 # เมนู 1: Rejoin Loop
 # ==========================================
 start_auto_rejoin() {
-    stty onlcr sane 2>/dev/null
-    clear
+    reset_ui
     show_header
     
     if [[ ! -s "$CONFIG_FILE" ]]; then
-        echo -e "${C_RED}❌ ไม่พบข้อมูลจอ! กรุณาไปทำเมนู 2 หรือ 4 เพื่อตั้งค่าก่อน${C_RESET}\r"
+        echo -e "${C_RED}❌ ไม่พบข้อมูลจอ! กรุณาไปทำเมนู 2 หรือ 4 เพื่อตั้งค่าก่อน${C_RESET}"
         sleep 3
         return
     fi
 
     inject_lua_script
 
-    stty onlcr sane 2>/dev/null
-    clear
+    reset_ui
     show_header
 
-    echo -e "${C_CYAN}--- Auto Rejoin Setup ---${C_RESET}\r"
-    echo -e "${C_YELLOW}กรุณาเลือกรูปแบบการเข้าเกม:${C_RESET}\r"
-    echo -e "  ${C_GREEN}1.${C_RESET} Public Server (เซิร์ฟรวม)\r"
-    echo -e "  ${C_GREEN}2.${C_RESET} VIP Server (ลิงก์เซิร์ฟส่วนตัว)\r"
-    echo -e "\r"
+    echo -e "${C_CYAN}--- Auto Rejoin Setup ---${C_RESET}"
+    echo -e "${C_YELLOW}กรุณาเลือกรูปแบบการเข้าเกม:${C_RESET}"
+    echo -e "  ${C_GREEN}1.${C_RESET} Public Server (เซิร์ฟรวม)"
+    echo -e "  ${C_GREEN}2.${C_RESET} VIP Server (ลิงก์เซิร์ฟส่วนตัว)"
+    echo ""
     read -p "🎯 เลือกโหมด: " mode_choice
 
     place_id=""
@@ -723,7 +728,7 @@ start_auto_rejoin() {
         raw_url=$(echo "$input_place" | tr -d '\r\n ')
         if [[ -z "$raw_url" ]]; then return; fi
     else
-        echo -e "${C_RED}❌ เลือกโหมดไม่ถูกต้อง!${C_RESET}\r"
+        echo -e "${C_RED}❌ เลือกโหมดไม่ถูกต้อง!${C_RESET}"
         sleep 2
         return
     fi
@@ -746,7 +751,7 @@ start_auto_rejoin() {
     done < "$CONFIG_FILE"
     
     if (( ${#pkgs[@]} == 0 )); then
-        echo -e "${C_RED}❌ ข้อมูลเสียหาย! กรุณาไปทำเมนู 2 ใหม่อีกครั้ง${C_RESET}\r"
+        echo -e "${C_RED}❌ ข้อมูลเสียหาย! กรุณาไปทำเมนู 2 ใหม่อีกครั้ง${C_RESET}"
         sleep 3
         return
     fi
@@ -791,7 +796,6 @@ start_auto_rejoin() {
             fi
 
             if [[ -z "${ping_paths[$i]}" ]]; then
-                # 📌 ลบการค้นหาแบบเฉพาะเจาะจงโฟลเดอร์ทิ้ง ป้องกันบั๊กเว้นวรรคเช่นกัน
                 local final_path=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null | head -n 1" | tr -d '\r\n')
                 if [[ -n "$final_path" ]]; then ping_paths[$i]="$final_path"; fi
             fi
@@ -844,7 +848,7 @@ start_auto_rejoin() {
 # ==========================================
 # ดักจับ Ctrl+C
 # ==========================================
-trap 'stty onlcr sane 2>/dev/null; tput cnorm; clear; exit' INT
+trap 'reset_ui; tput cnorm; exit' INT
 
 # ==========================================
 # เริ่มการทำงาน 
@@ -855,19 +859,18 @@ check_root
 # เมนูหลัก 
 # ==========================================
 while true; do
-    stty onlcr sane 2>/dev/null
-    clear
+    reset_ui
     show_header
-    echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}\r"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Start Auto Rejoin   ${C_YELLOW}Smart System${C_RESET}                   ${C_CYAN}│${C_RESET}\r"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Account Binding${C_RESET}                ${C_CYAN}│${C_RESET}\r"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}3${C_RESET}  Manage Webhook      ${C_YELLOW}Discord Autoexec${C_RESET}               ${C_CYAN}│${C_RESET}\r"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}4${C_RESET}  Setup Cookie Login  ${C_YELLOW}Import & Auto Bind${C_RESET}             ${C_CYAN}│${C_RESET}\r"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}5${C_RESET}  Run Cookie Login    ${C_YELLOW}Login to Home Screen${C_RESET}           ${C_CYAN}│${C_RESET}\r"
-    echo -e "${C_CYAN}│${C_RESET}                                                        ${C_CYAN}│${C_RESET}\r"
-    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}0${C_RESET}  Exit                ${C_YELLOW}Close Tool${C_RESET}                     ${C_CYAN}│${C_RESET}\r"
-    echo -e "${C_CYAN}└────────────────────────────────────────────────────────┘${C_RESET}\r"
-    echo -e "\r"
+    echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Start Auto Rejoin   ${C_YELLOW}Smart System${C_RESET}                   ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Start Auto Setup    ${C_YELLOW}Account Binding${C_RESET}                ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}3${C_RESET}  Manage Webhook      ${C_YELLOW}Discord Autoexec${C_RESET}               ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}4${C_RESET}  Setup Cookie Login  ${C_YELLOW}Import & Auto Bind${C_RESET}             ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}5${C_RESET}  Run Cookie Login    ${C_YELLOW}Login to Home Screen${C_RESET}           ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}                                                        ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}0${C_RESET}  Exit                ${C_YELLOW}Close Tool${C_RESET}                     ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}└────────────────────────────────────────────────────────┘${C_RESET}"
+    echo ""
     read -p "select: " opt_main
     case $opt_main in
         1) start_auto_rejoin ;;
@@ -875,7 +878,7 @@ while true; do
         3) setup_webhook ;;
         4) setup_cookie ;;
         5) execute_cookie_login ;;
-        0) stty onlcr sane 2>/dev/null; clear; tput cnorm; exit 0 ;;
-        *) echo -e "${C_RED}Invalid option!${C_RESET}\r"; sleep 1 ;;
+        0) reset_ui; tput cnorm; exit 0 ;;
+        *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
     esac
 done
