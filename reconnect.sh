@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}               v11.2 :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}    v11.3 :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -72,7 +72,7 @@ check_root() {
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ
+# ฝัง Lua อัตโนมัติ (แก้ไขให้ส่งข้อมูลเป็น User ID)
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -98,6 +98,7 @@ local GuiService = game:GetService("GuiService")
 local player = Players.LocalPlayer
 local webhookUrl = "$saved_webhook"
 local playerName = player and player.Name or "Unknown"
+local playerId = player and player.UserId or "Unknown"
 local displayName = player and player.DisplayName or "Unknown"
 local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
 local isDisconnected = false
@@ -109,7 +110,7 @@ local function sendWebhook(title, desc, colorHex)
             ["title"] = title, ["description"] = desc, ["color"] = colorHex,
             ["fields"] = {
                 {["name"] = "Username", ["value"] = playerName, ["inline"] = true},
-                {["name"] = "Display Name", ["value"] = displayName, ["inline"] = true}
+                {["name"] = "User ID", ["value"] = tostring(playerId), ["inline"] = true}
             },
             ["footer"] = {["text"] = "TH REJOIN TOOL"}
         }}
@@ -122,7 +123,7 @@ sendWebhook("✅ เข้าร่วมเซิร์ฟเวอร์สำ
 GuiService.ErrorMessageChanged:Connect(function(errorMsg)
     if errorMsg and errorMsg ~= "" then 
         isDisconnected = true
-        pcall(function() writefile("ping_" .. playerName .. ".txt", "DEAD") end)
+        pcall(function() writefile("ping_" .. tostring(playerId) .. ".txt", "DEAD") end)
         sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) 
     end
 end)
@@ -130,7 +131,7 @@ end)
 task.spawn(function()
     while task.wait(10) do
         if isDisconnected then break end
-        pcall(function() writefile("ping_" .. playerName .. ".txt", tostring(os.time())) end)
+        pcall(function() writefile("ping_" .. tostring(playerId) .. ".txt", tostring(os.time())) end)
     end
 end)
 EOF
@@ -212,7 +213,7 @@ execute_cookie_login() {
 }
 
 # ==========================================
-# เมนู 4: ระบบใส่ Cookie
+# เมนู 4: ระบบใส่ Cookie (ดึงเข้าเป็น ID)
 # ==========================================
 setup_cookie() {
     clear
@@ -233,9 +234,7 @@ setup_cookie() {
     if (( screen_count == 0 )); then
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
         read -p "🔍 พิมพ์ชื่อแอป (เช่น roblox, arceus) เพื่อหาใหม่: " custom_pkg
-        
         if [[ -n "$custom_pkg" ]]; then
-            echo -e "${C_YELLOW}🔄 กำลังค้นหาคำว่า '$custom_pkg'...${C_RESET}"
             > "temp_pkg.txt"
             for line in $(pm list packages); do
                 if [[ "${line,,}" == *"${custom_pkg,,}"* ]]; then
@@ -258,11 +257,8 @@ setup_cookie() {
     echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอในเครื่องนี้!${C_RESET}"
 
     if [[ ! -f "$DL_COOKIE_FILE" ]]; then
-        echo -e "${C_YELLOW}⚠️ ไม่พบไฟล์ cookie.txt${C_RESET}"
         echo -e "${C_GREEN}สร้างไฟล์ให้ใหม่แล้วที่: Download/cookie.txt${C_RESET}"
         echo "# วาง Cookie ของคุณไว้ที่นี่ (1 บรรทัดต่อ 1 จอ)" > "$DL_COOKIE_FILE"
-    else
-        echo -e "${C_CYAN}📂 พบไฟล์ cookie.txt ในโฟลเดอร์ Download แล้ว${C_RESET}"
     fi
 
     echo -e "\n${C_YELLOW}💡 กรุณาเปิดแอปจัดการไฟล์ ไปที่โฟลเดอร์ Download${C_RESET}"
@@ -295,7 +291,7 @@ setup_cookie() {
     fi
 
     echo -e "\n${C_CYAN}📌 อ่าน Cookie จากไฟล์ได้ทั้งหมด: $cookie_count ไอดี${C_RESET}"
-    echo -e "${C_YELLOW}⏳ กำลังตรวจสอบ Cookie และดึง Username อัตโนมัติจาก Roblox...${C_RESET}\n"
+    echo -e "${C_YELLOW}⏳ กำลังตรวจสอบ Cookie และดึง User ID อัตโนมัติจาก Roblox...${C_RESET}\n"
     
     > "$COOKIE_FILE"
     > "$CONFIG_FILE" 
@@ -312,17 +308,17 @@ setup_cookie() {
                 -H "Cookie: .ROBLOSECURITY=$cookie_val" \
                 -H "User-Agent: $UA")
                 
-            local uname=$(echo "$api_res" | grep -o '"name":"[^"]*' | head -n 1 | awk -F'"' '{print $4}')
+            local uid=$(echo "$api_res" | grep -o '"id":[0-9]*' | head -n 1 | cut -d':' -f2)
             
-            if [[ -z "$uname" ]]; then
+            if [[ -z "$uid" ]]; then
                 echo -e "${C_RED}❌ จอ $pkg: Cookie หมดอายุ หรือติด IP Lock! (ตั้งเป็น Unknown)${C_RESET}"
-                uname="Unknown"
+                uid="Unknown"
             else
-                echo -e "${C_GREEN}✔️ จอ $pkg ผูกกับ Username: 👤 $uname${C_RESET}"
+                echo -e "${C_GREEN}✔️ จอ $pkg ผูกกับ Account ID: 🆔 $uid${C_RESET}"
             fi
             
             echo "$pkg $cookie_val" >> "$COOKIE_FILE"
-            echo "$pkg:$uname" >> "$CONFIG_FILE"
+            echo "$pkg:$uid" >> "$CONFIG_FILE"
             ((assigned++))
         fi
     done
@@ -367,7 +363,7 @@ setup_webhook() {
 }
 
 # ==========================================
-# เมนู 2.1: Manual Bind (พิมพ์ชื่อเอง)
+# เมนู 2.1: Manual Bind (พิมพ์ ID เอง)
 # ==========================================
 setup_manual_bind() {
     clear
@@ -413,7 +409,7 @@ setup_manual_bind() {
         for pkg in "${found_pkgs[@]}"; do
             pkg="${pkg//[$'\t\r\n ']/}"
             stty onlcr sane 2>/dev/null
-            read -p "👤 ใส่ Username ของจอ <$pkg>: " uname
+            read -p "🆔 ใส่ Roblox User ID ของจอ <$pkg>: " uname
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
             input_data+=("$pkg:$uname")
         done
@@ -434,7 +430,7 @@ setup_manual_bind() {
 }
 
 # ==========================================
-# เมนู 2.2: Deep Scan Auto Bind (สแกนอัตโนมัติ)
+# เมนู 2.2: Deep Scan Auto Bind (สแกนแบบดึง User ID)
 # ==========================================
 setup_deep_scan() {
     clear
@@ -469,7 +465,7 @@ setup_deep_scan() {
 
     if (( screen_count > 0 )); then
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
-        echo -e "${C_YELLOW}🚀 กำลังมุดเข้าข้อมูลแอปเพื่อสแกนหา Username (โปรดรอสักครู่)...${C_RESET}\n"
+        echo -e "${C_YELLOW}🚀 กำลังมุดเข้าข้อมูลแอปเพื่อสแกนหา Account ID (โปรดรอสักครู่)...${C_RESET}\n"
         
         local found_pkgs=()
         while read -r line; do 
@@ -484,14 +480,17 @@ setup_deep_scan() {
             echo -e "${C_CYAN}🔍 ตรวจสอบจอ: ${pkg}...${C_RESET}"
             local uname=""
             
-            local extracted_cookie=$(su -c "grep -a -r -m 1 -h -o '_|WARNING:-DO-NOT-SHARE-THIS[^<\"]*' /data/data/$pkg/ 2>/dev/null" | tr -d '\r\n')
+            # 📌 แก้บั๊กหน้าจอพัง: ล้างขยะ Binary ออกจากคุกกี้ที่ขุดได้ด้วย tr -cd '[:print:]'
+            local extracted_cookie=$(su -c "grep -a -r -m 1 -h -o '_|WARNING:-DO-NOT-SHARE-THIS[^<\"]*' /data/data/$pkg/ 2>/dev/null" | tr -cd '[:print:]')
             
             if [[ -n "$extracted_cookie" ]]; then
                 local api_res=$(curl -s -k -L -X GET "https://users.roblox.com/v1/users/authenticated" -H "Cookie: .ROBLOSECURITY=$extracted_cookie" -H "User-Agent: $UA")
-                uname=$(echo "$api_res" | grep -o '"name":"[^"]*' | head -n 1 | awk -F'"' '{print $4}')
+                # 📌 ดึง ID (ตัวเลข) แทน Username
+                local uid=$(echo "$api_res" | grep -o '"id":[0-9]*' | head -n 1 | cut -d':' -f2)
                 
-                if [[ -n "$uname" ]]; then
-                    echo -e "${C_GREEN}   ✔️ เจอคุกกี้! ดึงชื่อสำเร็จ: 👤 $uname${C_RESET}"
+                if [[ -n "$uid" ]]; then
+                    echo -e "${C_GREEN}   ✔️ เจอคุกกี้! ดึง User ID สำเร็จ: 🆔 $uid${C_RESET}"
+                    uname="$uid"
                     
                     if ! grep -q "^$pkg " "$COOKIE_FILE" 2>/dev/null; then
                         echo "$pkg $extracted_cookie" >> "$COOKIE_FILE"
@@ -501,14 +500,15 @@ setup_deep_scan() {
                 fi
             fi
 
+            # 📌 บังคับหาไฟล์ชีพจรเฉพาะในโฟลเดอร์เกมเท่านั้น เพื่อป้องกันการสแกนไปโดนชื่อจากจอมั่วในโฟลเดอร์รวม
             if [[ -z "$uname" ]]; then
-                local ping_file=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | grep -v 'Unknown' | head -n 1")
+                local ping_file=$(su -c "find /storage/emulated/0/Android/data/$pkg -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | grep -v 'Unknown' | head -n 1")
                 if [[ -n "$ping_file" ]]; then
                     local filename="${ping_file##*/}" 
                     uname="${filename#ping_}"         
                     uname="${uname%.txt}"             
                     if [[ -n "$uname" ]]; then
-                        echo -e "${C_GREEN}   ✔️ ดึงชื่อจากไฟล์ชีพจรสำเร็จ: 👤 $uname${C_RESET}"
+                        echo -e "${C_GREEN}   ✔️ ดึง ID จากไฟล์ชีพจรสำเร็จ: 🆔 $uname${C_RESET}"
                     fi
                 fi
             fi
@@ -517,7 +517,7 @@ setup_deep_scan() {
                 echo -e "${C_RED}   ⚠️ สแกนไม่พบข้อมูล (แอปอาจจะใหม่เกินไป หรือเข้ารหัสไว้)${C_RESET}"
                 stty onlcr sane 2>/dev/null
                 tput cnorm
-                read -p "   👤 โปรดพิมพ์ Username เอง (ปล่อยว่าง=Unknown): " uname
+                read -p "   🆔 โปรดพิมพ์ Roblox User ID เอง (ปล่อยว่าง=Unknown): " uname
                 if [[ -z "$uname" ]]; then uname="Unknown"; fi
             fi
             
@@ -533,6 +533,10 @@ setup_deep_scan() {
         rm "temp_pkg.txt" 2>/dev/null
         sleep 2
     fi
+    
+    # 📌 คำสั่งไม้ตายแก้บั๊กเทอร์มินัลพัง/อักษรเละเทะหลังการสแกน Deep Scan
+    stty sane 2>/dev/null
+    tput reset 2>/dev/null || clear
 }
 
 # ==========================================
@@ -545,8 +549,8 @@ start_auto_setup_menu() {
         echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}"
         echo -e "${C_CYAN}│${C_RESET}               ${C_YELLOW}--- Auto Setup Options ---${C_RESET}               ${C_CYAN}│${C_RESET}"
         echo -e "${C_CYAN}├────────────────────────────────────────────────────────┤${C_RESET}"
-        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Manual Setup        ${C_YELLOW}พิมพ์ชื่อบัญชีผูกกับจอเอง${C_RESET}      ${C_CYAN}│${C_RESET}"
-        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Deep Scan (Beta)    ${C_YELLOW}สแกนหาชื่อในแอปอัตโนมัติ${C_RESET}       ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Manual Setup        ${C_YELLOW}พิมพ์ ID บัญชีผูกกับจอเอง${C_RESET}      ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Deep Scan (Beta)    ${C_YELLOW}สแกนหา ID ในแอปอัตโนมัติ${C_RESET}       ${C_CYAN}│${C_RESET}"
         echo -e "${C_CYAN}│${C_RESET}                                                        ${C_CYAN}│${C_RESET}"
         echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}0${C_RESET}  Back                ${C_YELLOW}กลับสู่เมนูหลัก${C_RESET}                 ${C_CYAN}│${C_RESET}"
         echo -e "${C_CYAN}└────────────────────────────────────────────────────────┘${C_RESET}"
@@ -572,7 +576,7 @@ draw_dashboard() {
     echo -e "▶️ สถานะระบบ: ${global_msg}"
     
     echo -e "${C_CYAN}┌──────────────────┬──────────────────┬──────────────────────┐${C_RESET}"
-    printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-20s ${C_CYAN}│${C_RESET}\n" "Package" "Account" "Status"
+    printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-20s ${C_CYAN}│${C_RESET}\n" "Package" "Account ID" "Status"
     echo -e "${C_CYAN}├──────────────────┼──────────────────┼──────────────────────┤${C_RESET}"
     
     for j in "${!pkgs[@]}"; do
@@ -684,7 +688,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop (Crash Detector & Fast Scan)
+# เมนู 1: Rejoin Loop
 # ==========================================
 start_auto_rejoin() {
     clear
