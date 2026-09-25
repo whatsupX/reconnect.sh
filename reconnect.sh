@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}             v11.7 (Stability Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}           v11.8 (Auto-Return Termux) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -420,7 +420,7 @@ setup_manual_bind() {
 }
 
 # ==========================================
-# เมนู 2.2: Smart Launch Scan
+# เมนู 2.2: Smart Launch Scan (อัปเดตดึง Termux กลับหน้าจอ)
 # ==========================================
 setup_smart_scan() {
     clear
@@ -470,7 +470,6 @@ setup_smart_scan() {
             pkg="${pkg//[$'\t\r\n ']/}"
             echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}"
             
-            # ปิดเฉพาะแพ็กเกจนี้ ไม่ให้สะเทือนจออื่น
             su -c "am force-stop $pkg" > /dev/null 2>&1
             su -c "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
             sleep 2
@@ -501,8 +500,12 @@ setup_smart_scan() {
                 ((elapsed+=3))
             done
             
-            # ปิดอย่างปลอดภัย ไม่กระทบ Termux 
+            # ปิดแอป
             su -c "am force-stop $pkg" > /dev/null 2>&1
+            
+            # 📌 กระชาก Termux กลับมาหน้าจอหลักอัตโนมัติ เพื่อป้องกัน Android เด้งไปหน้าโฮม
+            su -c "am start -n com.termux/com.termux.app.TermuxActivity" > /dev/null 2>&1
+            sleep 1
             
             if [[ -n "$uname" ]]; then
                 echo -e "${C_GREEN}   ✔️ สำเร็จ! ดึงชื่อจากชีพจรได้: 👤 $uname${C_RESET}"
@@ -525,8 +528,6 @@ setup_smart_scan() {
         rm "temp_pkg.txt" 2>/dev/null
         sleep 2
     fi
-    
-    clear
 }
 
 # ==========================================
@@ -600,7 +601,6 @@ relaunch_pkg() {
     colors[$idx]="$C_RED"
     draw_dashboard
     
-    # 📌 ลบการปิดมั่ว ปิดเฉพาะจอตัวเอง
     su -c "am force-stop $p" > /dev/null 2>&1
     sleep 2
 
