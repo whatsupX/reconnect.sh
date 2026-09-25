@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}               v11.5 :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}               v11.6 :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -72,7 +72,7 @@ check_root() {
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ (กลับไปใช้ Username)
+# ฝัง Lua อัตโนมัติ
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -174,6 +174,7 @@ execute_cookie_login() {
         if [[ -n "$pkg" && -n "$active_cookie" ]]; then
             echo -e "\n${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}${C_RESET}"
             
+            # 📌 ปิดแอปเป้าหมายเท่านั้น
             safe_su "am force-stop $pkg"
             sleep 2
             
@@ -362,7 +363,7 @@ setup_webhook() {
 }
 
 # ==========================================
-# เมนู 2.1: Manual Bind (พิมพ์ชื่อเอง)
+# เมนู 2.1: Manual Bind 
 # ==========================================
 setup_manual_bind() {
     clear
@@ -429,14 +430,13 @@ setup_manual_bind() {
 }
 
 # ==========================================
-# เมนู 2.2: Smart Launch Scan (ระบบใหม่ เปิดดึงชื่อทีละจอ)
+# เมนู 2.2: Smart Launch Scan
 # ==========================================
 setup_smart_scan() {
     clear
     show_header
     echo -e "${C_CYAN}--- Auto Setup (Smart Launch Scan) ---${C_RESET}"
 
-    # รันฉีดสคริปต์ก่อนเพื่อความชัวร์ว่าจอจะสร้างไฟล์ชีพจรได้
     inject_lua_script
 
     > "temp_pkg.txt"
@@ -476,13 +476,13 @@ setup_smart_scan() {
         done < "temp_pkg.txt"
         
         > "$CONFIG_FILE"
-        local random_place="189707" # แผนที่เบาๆ โหลดเร็ว (Natural Disaster)
+        local random_place="189707"
         
         for pkg in "${found_pkgs[@]}"; do
             pkg="${pkg//[$'\t\r\n ']/}"
             echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}"
             
-            # ปิดแอปและลบไฟล์ชีพจรเก่าทิ้งทั้งหมดก่อนเริ่ม (ป้องกันการดึงชื่อซ้ำ)
+            # 📌 เจาะจงปิดเฉพาะแพ็กเกจนี้ ไม่กระทบจออื่น
             safe_su "am force-stop $pkg"
             safe_su "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
             sleep 2
@@ -495,7 +495,6 @@ setup_smart_scan() {
             local elapsed=0
             
             while (( elapsed < timeout )); do
-                # สแกนหาไฟล์ชีพจรที่เพิ่งถูกสร้างขึ้นมาใหม่
                 local target_dirs="/storage/emulated/0/Android/data/$pkg /storage/emulated/0/Arceus* /storage/emulated/0/Delta* /storage/emulated/0/codex* /storage/emulated/0/Workspace* /storage/emulated/0/Roblox*"
                 local ping_file=$(su -c "find $target_dirs -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | head -n 1" | tr -d '\r\n')
                 
@@ -514,7 +513,7 @@ setup_smart_scan() {
                 ((elapsed+=3))
             done
             
-            # ได้ข้อมูลหรือหมดเวลา ก็สั่ง Kill แอปทันที
+            # 📌 ปิดแบบเฉพาะเจาะจง ไม่ปิดจออื่น
             safe_su "am force-stop $pkg"
             
             if [[ -n "$uname" ]]; then
@@ -541,7 +540,6 @@ setup_smart_scan() {
         sleep 2
     fi
     
-    # เคลียร์หน้าจอกันเทอร์มินัลพัง
     stty sane 2>/dev/null
     tput reset 2>/dev/null || clear
 }
@@ -618,8 +616,8 @@ relaunch_pkg() {
     colors[$idx]="$C_RED"
     draw_dashboard
     
+    # 📌 ลบ --user all ออกเพื่อให้ปิดเฉพาะจอเป้าหมาย ไม่ร่วงทุกจอ
     safe_su "am force-stop $p"
-    safe_su "am force-stop --user all $p"
     sleep 2
 
     statuses[$idx]="เปิดหน้าแรก"
