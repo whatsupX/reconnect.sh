@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}               v11.6 :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}             v11.7 (Stability Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -48,15 +48,12 @@ show_header() {
 # ==========================================
 safe_su() {
     su -c "$1" < /dev/null > /dev/null 2>&1
-    stty onlcr sane 2>/dev/null
-    printf "\r"
 }
 
 # ==========================================
 # ระบบตรวจสอบ Root
 # ==========================================
 check_root() {
-    stty onlcr sane 2>/dev/null
     clear
     show_header
     echo -e "${C_CYAN}🔍 กำลังตรวจสอบสิทธิ์ Root ในเครื่อง...${C_RESET}"
@@ -68,11 +65,10 @@ check_root() {
         echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว!${C_RESET}"
         sleep 1
     fi
-    stty onlcr sane 2>/dev/null
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ
+# ฝัง Lua อัตโนมัติ (กลับไปใช้ Username)
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -174,7 +170,6 @@ execute_cookie_login() {
         if [[ -n "$pkg" && -n "$active_cookie" ]]; then
             echo -e "\n${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}${C_RESET}"
             
-            # 📌 ปิดแอปเป้าหมายเท่านั้น
             safe_su "am force-stop $pkg"
             sleep 2
             
@@ -229,7 +224,6 @@ setup_cookie() {
             ((screen_count++))
         fi
     done
-    stty onlcr sane 2>/dev/null
 
     if (( screen_count == 0 )); then
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
@@ -243,7 +237,6 @@ setup_cookie() {
                     ((screen_count++))
                 fi
             done
-            stty onlcr sane 2>/dev/null
         fi
     fi
 
@@ -363,7 +356,7 @@ setup_webhook() {
 }
 
 # ==========================================
-# เมนู 2.1: Manual Bind 
+# เมนู 2.1: Manual Bind
 # ==========================================
 setup_manual_bind() {
     clear
@@ -379,7 +372,6 @@ setup_manual_bind() {
             ((screen_count++))
         fi
     done
-    stty onlcr sane 2>/dev/null
 
     if (( screen_count == 0 )); then
         read -p "🔍 ไม่พบ 'roblox.clien' พิมพ์ชื่อแอป (เช่น arceus) เพื่อหาใหม่: " custom_pkg
@@ -392,7 +384,6 @@ setup_manual_bind() {
                     ((screen_count++))
                 fi
             done
-            stty onlcr sane 2>/dev/null
         fi
     fi
 
@@ -408,7 +399,6 @@ setup_manual_bind() {
         local input_data=()
         for pkg in "${found_pkgs[@]}"; do
             pkg="${pkg//[$'\t\r\n ']/}"
-            stty onlcr sane 2>/dev/null
             read -p "👤 ใส่ Username ของจอ <$pkg>: " uname
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
             input_data+=("$pkg:$uname")
@@ -448,7 +438,6 @@ setup_smart_scan() {
             ((screen_count++))
         fi
     done
-    stty onlcr sane 2>/dev/null
 
     if (( screen_count == 0 )); then
         read -p "🔍 ไม่พบ 'roblox.clien' พิมพ์ชื่อแอป (เช่น arceus) เพื่อหาใหม่: " custom_pkg
@@ -461,7 +450,6 @@ setup_smart_scan() {
                     ((screen_count++))
                 fi
             done
-            stty onlcr sane 2>/dev/null
         fi
     fi
 
@@ -482,13 +470,13 @@ setup_smart_scan() {
             pkg="${pkg//[$'\t\r\n ']/}"
             echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}"
             
-            # 📌 เจาะจงปิดเฉพาะแพ็กเกจนี้ ไม่กระทบจออื่น
-            safe_su "am force-stop $pkg"
-            safe_su "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
+            # ปิดเฉพาะแพ็กเกจนี้ ไม่ให้สะเทือนจออื่น
+            su -c "am force-stop $pkg" > /dev/null 2>&1
+            su -c "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
             sleep 2
             
             echo -e "${C_YELLOW}   ⏳ กำลังส่งเข้าแมพและรอสคริปต์สร้างไฟล์ชีพจร (รอสูงสุด 90 วิ)...${C_RESET}"
-            safe_su "am start -a android.intent.action.VIEW -d 'roblox://placeId=$random_place' -p '$pkg'"
+            su -c "am start -a android.intent.action.VIEW -d 'roblox://placeId=$random_place' -p '$pkg'" > /dev/null 2>&1
             
             local uname=""
             local timeout=90
@@ -513,15 +501,13 @@ setup_smart_scan() {
                 ((elapsed+=3))
             done
             
-            # 📌 ปิดแบบเฉพาะเจาะจง ไม่ปิดจออื่น
-            safe_su "am force-stop $pkg"
+            # ปิดอย่างปลอดภัย ไม่กระทบ Termux 
+            su -c "am force-stop $pkg" > /dev/null 2>&1
             
             if [[ -n "$uname" ]]; then
                 echo -e "${C_GREEN}   ✔️ สำเร็จ! ดึงชื่อจากชีพจรได้: 👤 $uname${C_RESET}"
             else
                 echo -e "${C_RED}   ⚠️ หมดเวลา! ไม่พบไฟล์ชีพจร (แอปอาจค้าง หรือไม่ได้ล็อกอินไอดีไว้)${C_RESET}"
-                stty onlcr sane 2>/dev/null
-                tput cnorm
                 read -p "   👤 โปรดพิมพ์ Username เอง (ปล่อยว่าง=Unknown): " uname
                 if [[ -z "$uname" ]]; then uname="Unknown"; fi
             fi
@@ -540,8 +526,7 @@ setup_smart_scan() {
         sleep 2
     fi
     
-    stty sane 2>/dev/null
-    tput reset 2>/dev/null || clear
+    clear
 }
 
 # ==========================================
@@ -574,7 +559,6 @@ start_auto_setup_menu() {
 # ระบบวาดตาราง Dashboard 
 # ==========================================
 draw_dashboard() {
-    stty onlcr sane 2>/dev/null 
     clear
     show_header
     echo -e "${C_CYAN}--- 📊 Smart Rejoin Dashboard ---${C_RESET}"
@@ -616,8 +600,8 @@ relaunch_pkg() {
     colors[$idx]="$C_RED"
     draw_dashboard
     
-    # 📌 ลบ --user all ออกเพื่อให้ปิดเฉพาะจอเป้าหมาย ไม่ร่วงทุกจอ
-    safe_su "am force-stop $p"
+    # 📌 ลบการปิดมั่ว ปิดเฉพาะจอตัวเอง
+    su -c "am force-stop $p" > /dev/null 2>&1
     sleep 2
 
     statuses[$idx]="เปิดหน้าแรก"
@@ -707,7 +691,6 @@ start_auto_rejoin() {
 
     inject_lua_script
 
-    stty onlcr sane 2>/dev/null
     clear
     show_header
 
@@ -852,7 +835,7 @@ start_auto_rejoin() {
 # ==========================================
 # ดักจับ Ctrl+C
 # ==========================================
-trap 'tput cnorm; clear; stty onlcr sane 2>/dev/null; exit' INT
+trap 'tput cnorm; clear; exit' INT
 
 # ==========================================
 # เริ่มการทำงาน 
@@ -882,7 +865,7 @@ while true; do
         3) setup_webhook ;;
         4) setup_cookie ;;
         5) execute_cookie_login ;;
-        0) clear; tput cnorm; stty onlcr sane 2>/dev/null; exit 0 ;;
+        0) clear; tput cnorm; exit 0 ;;
         *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
     esac
 done
