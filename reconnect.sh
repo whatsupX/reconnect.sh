@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}    v11.1 (Crash Detector & Fast Scan) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}               v11.2 :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -779,11 +779,9 @@ start_auto_rejoin() {
             launched_at=${launch_times[$i]:-0}
             wait_time=$((current_time - launched_at))
             
-            # 📌 1. Crash Detector: เช็คว่าตัวแอปปิดตัวไปเองหรือยัง (เช็คหลังผ่านไป 15 วิ)
             if (( wait_time > 15 )); then
                 local is_alive=$(su -c "pidof $pkg" 2>/dev/null)
                 if [[ -z "$is_alive" ]]; then
-                    # เผื่อกรณี pidof ไม่ทำงาน ใช้ ps ตรวจสอบซ้ำ
                     is_alive=$(su -c "ps -A \vert{} grep $pkg" 2>/dev/null)
                     if [[ -z "$is_alive" ]]; then
                         statuses[$i]="จอเด้งหลุด! (App Crash)"
@@ -795,14 +793,12 @@ start_auto_rejoin() {
                 fi
             fi
 
-            # 📌 2. Fast Scan: ค้นหาไฟล์ชีพจรเฉพาะในโฟลเดอร์เกม เพื่อป้องกันสคริปต์สแกนจนค้าง
             if [[ -z "${ping_paths[$i]}" ]]; then
                 local target_dirs="/storage/emulated/0/Android/data/$pkg /storage/emulated/0/Arceus* /storage/emulated/0/Delta* /storage/emulated/0/codex* /storage/emulated/0/Workspace* /storage/emulated/0/Roblox*"
                 local final_path=$(su -c "find $target_dirs -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null | head -n 1" | tr -d '\r\n')
                 if [[ -n "$final_path" ]]; then ping_paths[$i]="$final_path"; fi
             fi
 
-            # 📌 3. ตรวจสอบสถานะการเชื่อมต่อ
             if [[ -n "${ping_paths[$i]}" ]]; then
                 last_ping=$(su -c "cat '${ping_paths[$i]}'" 2>/dev/null | tr -d '\r\n ')
                 
