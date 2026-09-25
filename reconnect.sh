@@ -39,7 +39,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}    v11.3 :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}               v11.5 :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -72,7 +72,7 @@ check_root() {
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ (แก้ไขให้ส่งข้อมูลเป็น User ID)
+# ฝัง Lua อัตโนมัติ (กลับไปใช้ Username)
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -98,7 +98,6 @@ local GuiService = game:GetService("GuiService")
 local player = Players.LocalPlayer
 local webhookUrl = "$saved_webhook"
 local playerName = player and player.Name or "Unknown"
-local playerId = player and player.UserId or "Unknown"
 local displayName = player and player.DisplayName or "Unknown"
 local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
 local isDisconnected = false
@@ -110,7 +109,7 @@ local function sendWebhook(title, desc, colorHex)
             ["title"] = title, ["description"] = desc, ["color"] = colorHex,
             ["fields"] = {
                 {["name"] = "Username", ["value"] = playerName, ["inline"] = true},
-                {["name"] = "User ID", ["value"] = tostring(playerId), ["inline"] = true}
+                {["name"] = "Display Name", ["value"] = displayName, ["inline"] = true}
             },
             ["footer"] = {["text"] = "TH REJOIN TOOL"}
         }}
@@ -123,7 +122,7 @@ sendWebhook("✅ เข้าร่วมเซิร์ฟเวอร์สำ
 GuiService.ErrorMessageChanged:Connect(function(errorMsg)
     if errorMsg and errorMsg ~= "" then 
         isDisconnected = true
-        pcall(function() writefile("ping_" .. tostring(playerId) .. ".txt", "DEAD") end)
+        pcall(function() writefile("ping_" .. playerName .. ".txt", "DEAD") end)
         sendWebhook("❌ หลุดออกจากเกม!", "**สาเหตุ:** " .. errorMsg, 16711680) 
     end
 end)
@@ -131,7 +130,7 @@ end)
 task.spawn(function()
     while task.wait(10) do
         if isDisconnected then break end
-        pcall(function() writefile("ping_" .. tostring(playerId) .. ".txt", tostring(os.time())) end)
+        pcall(function() writefile("ping_" .. playerName .. ".txt", tostring(os.time())) end)
     end
 end)
 EOF
@@ -213,7 +212,7 @@ execute_cookie_login() {
 }
 
 # ==========================================
-# เมนู 4: ระบบใส่ Cookie (ดึงเข้าเป็น ID)
+# เมนู 4: ระบบใส่ Cookie
 # ==========================================
 setup_cookie() {
     clear
@@ -291,7 +290,7 @@ setup_cookie() {
     fi
 
     echo -e "\n${C_CYAN}📌 อ่าน Cookie จากไฟล์ได้ทั้งหมด: $cookie_count ไอดี${C_RESET}"
-    echo -e "${C_YELLOW}⏳ กำลังตรวจสอบ Cookie และดึง User ID อัตโนมัติจาก Roblox...${C_RESET}\n"
+    echo -e "${C_YELLOW}⏳ กำลังตรวจสอบ Cookie และดึง Username อัตโนมัติจาก Roblox...${C_RESET}\n"
     
     > "$COOKIE_FILE"
     > "$CONFIG_FILE" 
@@ -308,17 +307,17 @@ setup_cookie() {
                 -H "Cookie: .ROBLOSECURITY=$cookie_val" \
                 -H "User-Agent: $UA")
                 
-            local uid=$(echo "$api_res" | grep -o '"id":[0-9]*' | head -n 1 | cut -d':' -f2)
+            local uname=$(echo "$api_res" | grep -o '"name":"[^"]*' | head -n 1 | awk -F'"' '{print $4}')
             
-            if [[ -z "$uid" ]]; then
+            if [[ -z "$uname" ]]; then
                 echo -e "${C_RED}❌ จอ $pkg: Cookie หมดอายุ หรือติด IP Lock! (ตั้งเป็น Unknown)${C_RESET}"
-                uid="Unknown"
+                uname="Unknown"
             else
-                echo -e "${C_GREEN}✔️ จอ $pkg ผูกกับ Account ID: 🆔 $uid${C_RESET}"
+                echo -e "${C_GREEN}✔️ จอ $pkg ผูกกับ Username: 👤 $uname${C_RESET}"
             fi
             
             echo "$pkg $cookie_val" >> "$COOKIE_FILE"
-            echo "$pkg:$uid" >> "$CONFIG_FILE"
+            echo "$pkg:$uname" >> "$CONFIG_FILE"
             ((assigned++))
         fi
     done
@@ -363,7 +362,7 @@ setup_webhook() {
 }
 
 # ==========================================
-# เมนู 2.1: Manual Bind (พิมพ์ ID เอง)
+# เมนู 2.1: Manual Bind (พิมพ์ชื่อเอง)
 # ==========================================
 setup_manual_bind() {
     clear
@@ -409,7 +408,7 @@ setup_manual_bind() {
         for pkg in "${found_pkgs[@]}"; do
             pkg="${pkg//[$'\t\r\n ']/}"
             stty onlcr sane 2>/dev/null
-            read -p "🆔 ใส่ Roblox User ID ของจอ <$pkg>: " uname
+            read -p "👤 ใส่ Username ของจอ <$pkg>: " uname
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
             input_data+=("$pkg:$uname")
         done
@@ -430,13 +429,16 @@ setup_manual_bind() {
 }
 
 # ==========================================
-# เมนู 2.2: Deep Scan Auto Bind (สแกนแบบดึง User ID)
+# เมนู 2.2: Smart Launch Scan (ระบบใหม่ เปิดดึงชื่อทีละจอ)
 # ==========================================
-setup_deep_scan() {
+setup_smart_scan() {
     clear
     show_header
-    echo -e "${C_CYAN}--- Auto Setup (Deep Scan Mode) ---${C_RESET}"
-    
+    echo -e "${C_CYAN}--- Auto Setup (Smart Launch Scan) ---${C_RESET}"
+
+    # รันฉีดสคริปต์ก่อนเพื่อความชัวร์ว่าจอจะสร้างไฟล์ชีพจรได้
+    inject_lua_script
+
     > "temp_pkg.txt"
     screen_count=0
     for line in $(pm list packages); do
@@ -465,7 +467,8 @@ setup_deep_scan() {
 
     if (( screen_count > 0 )); then
         echo -e "${C_GREEN}✅ ตรวจพบ $screen_count จอ!${C_RESET}"
-        echo -e "${C_YELLOW}🚀 กำลังมุดเข้าข้อมูลแอปเพื่อสแกนหา Account ID (โปรดรอสักครู่)...${C_RESET}\n"
+        echo -e "${C_YELLOW}🚀 ระบบจะเปิดเข้าแมพสุ่ม (Natural Disaster) ทีละจอเพื่อบังคับดึงชื่อ${C_RESET}"
+        echo -e "${C_YELLOW}⚠️ ห้ามแตะหน้าจอระหว่างนี้! สคริปต์จะดึงชื่อและปิดจอให้เองเมื่อเสร็จสิ้น...${C_RESET}\n"
         
         local found_pkgs=()
         while read -r line; do 
@@ -473,56 +476,60 @@ setup_deep_scan() {
         done < "temp_pkg.txt"
         
         > "$CONFIG_FILE"
-        local new_cookies=0
+        local random_place="189707" # แผนที่เบาๆ โหลดเร็ว (Natural Disaster)
         
         for pkg in "${found_pkgs[@]}"; do
             pkg="${pkg//[$'\t\r\n ']/}"
-            echo -e "${C_CYAN}🔍 ตรวจสอบจอ: ${pkg}...${C_RESET}"
+            echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}"
+            
+            # ปิดแอปและลบไฟล์ชีพจรเก่าทิ้งทั้งหมดก่อนเริ่ม (ป้องกันการดึงชื่อซ้ำ)
+            safe_su "am force-stop $pkg"
+            safe_su "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
+            sleep 2
+            
+            echo -e "${C_YELLOW}   ⏳ กำลังส่งเข้าแมพและรอสคริปต์สร้างไฟล์ชีพจร (รอสูงสุด 90 วิ)...${C_RESET}"
+            safe_su "am start -a android.intent.action.VIEW -d 'roblox://placeId=$random_place' -p '$pkg'"
+            
             local uname=""
+            local timeout=90
+            local elapsed=0
             
-            # 📌 แก้บั๊กหน้าจอพัง: ล้างขยะ Binary ออกจากคุกกี้ที่ขุดได้ด้วย tr -cd '[:print:]'
-            local extracted_cookie=$(su -c "grep -a -r -m 1 -h -o '_|WARNING:-DO-NOT-SHARE-THIS[^<\"]*' /data/data/$pkg/ 2>/dev/null" | tr -cd '[:print:]')
-            
-            if [[ -n "$extracted_cookie" ]]; then
-                local api_res=$(curl -s -k -L -X GET "https://users.roblox.com/v1/users/authenticated" -H "Cookie: .ROBLOSECURITY=$extracted_cookie" -H "User-Agent: $UA")
-                # 📌 ดึง ID (ตัวเลข) แทน Username
-                local uid=$(echo "$api_res" | grep -o '"id":[0-9]*' | head -n 1 | cut -d':' -f2)
+            while (( elapsed < timeout )); do
+                # สแกนหาไฟล์ชีพจรที่เพิ่งถูกสร้างขึ้นมาใหม่
+                local target_dirs="/storage/emulated/0/Android/data/$pkg /storage/emulated/0/Arceus* /storage/emulated/0/Delta* /storage/emulated/0/codex* /storage/emulated/0/Workspace* /storage/emulated/0/Roblox*"
+                local ping_file=$(su -c "find $target_dirs -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | head -n 1" | tr -d '\r\n')
                 
-                if [[ -n "$uid" ]]; then
-                    echo -e "${C_GREEN}   ✔️ เจอคุกกี้! ดึง User ID สำเร็จ: 🆔 $uid${C_RESET}"
-                    uname="$uid"
-                    
-                    if ! grep -q "^$pkg " "$COOKIE_FILE" 2>/dev/null; then
-                        echo "$pkg $extracted_cookie" >> "$COOKIE_FILE"
-                        echo -e "${C_PURPLE}   ✔️ นำคุกกี้บันทึกลงระบบ Auto-Login ให้อัตโนมัติ!${C_RESET}"
-                        ((new_cookies++))
-                    fi
-                fi
-            fi
-
-            # 📌 บังคับหาไฟล์ชีพจรเฉพาะในโฟลเดอร์เกมเท่านั้น เพื่อป้องกันการสแกนไปโดนชื่อจากจอมั่วในโฟลเดอร์รวม
-            if [[ -z "$uname" ]]; then
-                local ping_file=$(su -c "find /storage/emulated/0/Android/data/$pkg -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | grep -v 'Unknown' | head -n 1")
                 if [[ -n "$ping_file" ]]; then
                     local filename="${ping_file##*/}" 
                     uname="${filename#ping_}"         
                     uname="${uname%.txt}"             
-                    if [[ -n "$uname" ]]; then
-                        echo -e "${C_GREEN}   ✔️ ดึง ID จากไฟล์ชีพจรสำเร็จ: 🆔 $uname${C_RESET}"
+                    if [[ "$uname" != "Unknown" && -n "$uname" ]]; then
+                        break
+                    else
+                        uname=""
                     fi
                 fi
-            fi
-
-            if [[ -z "$uname" ]]; then
-                echo -e "${C_RED}   ⚠️ สแกนไม่พบข้อมูล (แอปอาจจะใหม่เกินไป หรือเข้ารหัสไว้)${C_RESET}"
+                
+                sleep 3
+                ((elapsed+=3))
+            done
+            
+            # ได้ข้อมูลหรือหมดเวลา ก็สั่ง Kill แอปทันที
+            safe_su "am force-stop $pkg"
+            
+            if [[ -n "$uname" ]]; then
+                echo -e "${C_GREEN}   ✔️ สำเร็จ! ดึงชื่อจากชีพจรได้: 👤 $uname${C_RESET}"
+            else
+                echo -e "${C_RED}   ⚠️ หมดเวลา! ไม่พบไฟล์ชีพจร (แอปอาจค้าง หรือไม่ได้ล็อกอินไอดีไว้)${C_RESET}"
                 stty onlcr sane 2>/dev/null
                 tput cnorm
-                read -p "   🆔 โปรดพิมพ์ Roblox User ID เอง (ปล่อยว่าง=Unknown): " uname
+                read -p "   👤 โปรดพิมพ์ Username เอง (ปล่อยว่าง=Unknown): " uname
                 if [[ -z "$uname" ]]; then uname="Unknown"; fi
             fi
             
             echo "$pkg:$uname" >> "$CONFIG_FILE"
             echo ""
+            sleep 2
         done
         
         rm "temp_pkg.txt" 2>/dev/null
@@ -534,7 +541,7 @@ setup_deep_scan() {
         sleep 2
     fi
     
-    # 📌 คำสั่งไม้ตายแก้บั๊กเทอร์มินัลพัง/อักษรเละเทะหลังการสแกน Deep Scan
+    # เคลียร์หน้าจอกันเทอร์มินัลพัง
     stty sane 2>/dev/null
     tput reset 2>/dev/null || clear
 }
@@ -549,8 +556,8 @@ start_auto_setup_menu() {
         echo -e "${C_CYAN}┌────────────────────────────────────────────────────────┐${C_RESET}"
         echo -e "${C_CYAN}│${C_RESET}               ${C_YELLOW}--- Auto Setup Options ---${C_RESET}               ${C_CYAN}│${C_RESET}"
         echo -e "${C_CYAN}├────────────────────────────────────────────────────────┤${C_RESET}"
-        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Manual Setup        ${C_YELLOW}พิมพ์ ID บัญชีผูกกับจอเอง${C_RESET}      ${C_CYAN}│${C_RESET}"
-        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Deep Scan (Beta)    ${C_YELLOW}สแกนหา ID ในแอปอัตโนมัติ${C_RESET}       ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}1${C_RESET}  Manual Setup        ${C_YELLOW}พิมพ์ชื่อบัญชีผูกกับจอเอง${C_RESET}      ${C_CYAN}│${C_RESET}"
+        echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}2${C_RESET}  Smart Launch Scan   ${C_YELLOW}สแกนโดยเปิดเข้าแมพทีละจอ${C_RESET}       ${C_CYAN}│${C_RESET}"
         echo -e "${C_CYAN}│${C_RESET}                                                        ${C_CYAN}│${C_RESET}"
         echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}0${C_RESET}  Back                ${C_YELLOW}กลับสู่เมนูหลัก${C_RESET}                 ${C_CYAN}│${C_RESET}"
         echo -e "${C_CYAN}└────────────────────────────────────────────────────────┘${C_RESET}"
@@ -558,7 +565,7 @@ start_auto_setup_menu() {
         read -p "select: " opt_setup
         case $opt_setup in
             1) setup_manual_bind; break ;;
-            2) setup_deep_scan; break ;;
+            2) setup_smart_scan; break ;;
             0) break ;;
             *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
         esac
@@ -576,7 +583,7 @@ draw_dashboard() {
     echo -e "▶️ สถานะระบบ: ${global_msg}"
     
     echo -e "${C_CYAN}┌──────────────────┬──────────────────┬──────────────────────┐${C_RESET}"
-    printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-20s ${C_CYAN}│${C_RESET}\n" "Package" "Account ID" "Status"
+    printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-20s ${C_CYAN}│${C_RESET}\n" "Package" "Account" "Status"
     echo -e "${C_CYAN}├──────────────────┼──────────────────┼──────────────────────┤${C_RESET}"
     
     for j in "${!pkgs[@]}"; do
@@ -607,7 +614,7 @@ relaunch_pkg() {
     cache_path="/storage/emulated/0/Android/data/$p/cache"
     if [[ -d "$cache_path" ]]; then safe_su "rm -rf $cache_path/*"; fi
 
-    statuses[$idx]="กำลังปิด (Kill)"
+    statuses[$idx]="กำลังปิดแอป..."
     colors[$idx]="$C_RED"
     draw_dashboard
     
@@ -621,7 +628,7 @@ relaunch_pkg() {
     safe_su "monkey -p \"$p\" -c android.intent.category.LAUNCHER 1"
     
     for (( w=5; w>0; w-- )); do
-        statuses[$idx]="รอเข้าเกม ${w}s..."
+        statuses[$idx]="รอเข้าเกม ${w}s"
         draw_dashboard
         sleep 1
     done
@@ -653,7 +660,7 @@ relaunch_pkg() {
         fi
     fi
     
-    statuses[$idx]="ส่งเข้าแมพ (Map)"
+    statuses[$idx]="ส่งเข้าแมพ..."
     colors[$idx]="$C_GREEN"
     draw_dashboard
     
@@ -683,7 +690,7 @@ relaunch_pkg() {
     fi
     ping_paths[$idx]=""
     
-    statuses[$idx]="กำลังโหลดสคริปต์..."
+    statuses[$idx]="กำลังโหลดสคริปต์"
     colors[$idx]="$C_YELLOW"
 }
 
@@ -707,9 +714,9 @@ start_auto_rejoin() {
     show_header
 
     echo -e "${C_CYAN}--- Auto Rejoin Setup ---${C_RESET}"
-    echo -e "${C_YELLOW}กรุณาเลือกรูปแบบการเข้าเกม (พิมพ์ 1 หรือ 2):${C_RESET}"
-    echo -e "  ${C_GREEN}1.${C_RESET} Public Server (เซิร์ฟรวม / ใส่แค่ Place ID)"
-    echo -e "  ${C_GREEN}2.${C_RESET} VIP Server (เซิร์ฟส่วนตัว / ใส่ลิงก์ VIP เต็มๆ)"
+    echo -e "${C_YELLOW}กรุณาเลือกรูปแบบการเข้าเกม:${C_RESET}"
+    echo -e "  ${C_GREEN}1.${C_RESET} Public Server (เซิร์ฟรวม)"
+    echo -e "  ${C_GREEN}2.${C_RESET} VIP Server (ลิงก์เซิร์ฟส่วนตัว)"
     echo ""
     read -p "🎯 เลือกโหมด: " mode_choice
 
@@ -717,25 +724,21 @@ start_auto_rejoin() {
     raw_url=""
 
     if [[ "$mode_choice" == "1" ]]; then
-        read -p "🎯 ใส่ Place ID ตัวเลข: " input_place
+        read -p "🎯 ใส่ Place ID: " input_place
         place_id=$(echo "$input_place" | tr -d '\r\n ')
         if [[ -z "$place_id" ]]; then return; fi
-        echo -e "${C_GREEN}✔️ บันทึก Place ID สำเร็จ!${C_RESET}"
-        sleep 1
         
     elif [[ "$mode_choice" == "2" ]]; then
-        read -p "🔗 วางลิงก์ VIP / Share Link ทั้งหมด: " input_place
+        read -p "🔗 วางลิงก์ VIP ทั้งหมด: " input_place
         raw_url=$(echo "$input_place" | tr -d '\r\n ')
         if [[ -z "$raw_url" ]]; then return; fi
-        echo -e "${C_GREEN}✔️ บันทึกลิงก์สำเร็จ! ระบบจะใช้ลิงก์นี้ดึงเข้าแมพโดยตรง${C_RESET}"
-        sleep 2
     else
         echo -e "${C_RED}❌ เลือกโหมดไม่ถูกต้อง!${C_RESET}"
         sleep 2
         return
     fi
 
-    read -p "⏳ หน่วงเวลาระหว่างเปิดจอรอบแรกกี่วิ? (แนะนำ 5-10): " delay_between
+    read -p "⏳ หน่วงเวลาระหว่างเปิดจอ (แนะนำ 5-10): " delay_between
     if [[ ! "$delay_between" =~ ^[0-9]+$ ]]; then delay_between=7; fi
 
     pkgs=()
@@ -767,14 +770,14 @@ start_auto_rejoin() {
 
     tput civis 
 
-    global_msg="${C_GREEN}🚀 กำลังรันเปิดจอทั้งหมดในรอบแรก...${C_RESET}"
+    global_msg="${C_GREEN}🚀 กำลังเปิดจอ...${C_RESET}"
     for i in "${!pkgs[@]}"; do
         relaunch_pkg "${pkgs[$i]}" "$i"
         sleep "$delay_between"
     done
 
     while true; do
-        global_msg="${C_CYAN}👀 ระบบ Rejoin กำลังตรวจสอบ...${C_RESET}"
+        global_msg="${C_CYAN}👀 ระบบกำลังตรวจสอบ...${C_RESET}"
         current_time=$(date +%s)
 
         for i in "${!pkgs[@]}"; do
@@ -788,7 +791,7 @@ start_auto_rejoin() {
                 if [[ -z "$is_alive" ]]; then
                     is_alive=$(su -c "ps -A \vert{} grep $pkg" 2>/dev/null)
                     if [[ -z "$is_alive" ]]; then
-                        statuses[$i]="จอเด้งหลุด! (App Crash)"
+                        statuses[$i]="จอเด้งหลุด!"
                         colors[$i]="$C_RED"
                         draw_dashboard
                         relaunch_pkg "$pkg" "$i"
@@ -807,7 +810,7 @@ start_auto_rejoin() {
                 last_ping=$(su -c "cat '${ping_paths[$i]}'" 2>/dev/null | tr -d '\r\n ')
                 
                 if [[ "$last_ping" == "DEAD" ]]; then
-                    statuses[$i]="หลุด! (Error Msg)"
+                    statuses[$i]="หลุดเซิร์ฟเวอร์!"
                     colors[$i]="$C_RED"
                     draw_dashboard
                     relaunch_pkg "$pkg" "$i"
@@ -815,24 +818,24 @@ start_auto_rejoin() {
                     if [[ "${last_ping_values[$i]}" != "$last_ping" ]]; then
                         last_ping_values[$i]="$last_ping"
                         last_ping_times[$i]=$current_time
-                        statuses[$i]="ออนไลน์ (อัปเดตล่าสุด)"
+                        statuses[$i]="ออนไลน์"
                         colors[$i]="$C_GREEN"
                     else
                         diff=$((current_time -${last_ping_times[$i]:-$current_time}))
                         if (( diff > 60 )); then
-                            statuses[$i]="หลุด! (ไม่ได้อัปเดต > 60s)"
+                            statuses[$i]="จอค้าง!"
                             colors[$i]="$C_RED"
                             draw_dashboard
                             relaunch_pkg "$pkg" "$i"
                         else
-                            statuses[$i]="ออนไลน์ (${diff}s ก่อน)"
+                            statuses[$i]="ออนไลน์ (${diff}s)"
                             colors[$i]="$C_GREEN"
                         fi
                     fi
                 fi
             else
                 if (( wait_time > 150 )); then 
-                    statuses[$i]="จอค้าง! (Timeout)"
+                    statuses[$i]="โหลดค้าง!"
                     colors[$i]="$C_RED"
                     draw_dashboard
                     relaunch_pkg "$pkg" "$i"
