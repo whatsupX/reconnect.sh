@@ -35,7 +35,7 @@ fi
 reset_ui() {
     stty sane 2>/dev/null
     stty onlcr 2>/dev/null
-    printf "\033c" # รหัส ANSI ล้างการตั้งค่าเทอร์มินัลทั้งหมด
+    printf "\033c" 
     clear
 }
 
@@ -49,7 +49,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}           v12.0 (Terminal Nuke Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}           v12.1 (Smart Scan Init Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -430,7 +430,7 @@ setup_manual_bind() {
 }
 
 # ==========================================
-# เมนู 2.2: Smart Launch Scan 
+# เมนู 2.2: Smart Launch Scan (อัปเดตเปิดหน้าแรกก่อนยิงแมพ)
 # ==========================================
 setup_smart_scan() {
     reset_ui
@@ -479,7 +479,6 @@ setup_smart_scan() {
         for pkg in "${found_pkgs[@]}"; do
             pkg="${pkg//[$'\t\r\n ']/}"
             
-            # ล้างหน้าจอก่อนสแกนแต่ละจอ เพื่อความสะอาด
             reset_ui
             show_header
             echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}"
@@ -488,6 +487,12 @@ setup_smart_scan() {
             su -c "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_*.txt' -exec rm -f {} + >/dev/null 2>&1"
             sleep 2
             
+            # 📌 เปิดหน้าแรกของแอปก่อน เพื่อให้ Executor ทำงาน
+            echo -e "${C_YELLOW}   ⏳ กำลังเปิดแอปเพื่อรัน Executor (รอ 5 วิ)...${C_RESET}"
+            su -c "monkey -p \"$pkg\" -c android.intent.category.LAUNCHER 1" > /dev/null 2>&1
+            sleep 5
+            
+            # 📌 จากนั้นค่อยยิงลิงก์เข้าแมพ
             echo -e "${C_YELLOW}   ⏳ กำลังส่งเข้าแมพและรอสคริปต์สร้างไฟล์ชีพจร (รอสูงสุด 90 วิ)...${C_RESET}"
             su -c "am start -a android.intent.action.VIEW -d 'roblox://placeId=$random_place' -p '$pkg'" > /dev/null 2>&1
             
@@ -517,7 +522,6 @@ setup_smart_scan() {
             su -c "am start -n com.termux/com.termux.app.TermuxActivity" > /dev/null 2>&1
             sleep 1
             
-            # ซ่อมหน้าจอทุกครั้งที่โดนดึงกลับมา
             reset_ui
             show_header
             echo -e "${C_CYAN}📱 ดำเนินการจอ: ${pkg} เสร็จสิ้น${C_RESET}"
