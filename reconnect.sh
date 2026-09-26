@@ -49,7 +49,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}           v12.1 (Smart Scan Init Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}        v12.2 (Delta Autoexecute Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -78,7 +78,7 @@ check_root() {
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ 
+# ฝัง Lua อัตโนมัติ (รองรับ Autoexecute ของ Delta)
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -88,10 +88,12 @@ inject_lua_script() {
         saved_webhook=$(tr -d '\r\n' < "$WEBHOOK_FILE")
     fi
 
+    # 📌 หาทั้งแฟ้ม autoexec และ autoexecute
     su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
+    su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'"
 
     if [[ ! -s "$TEMP_FOLDERS" ]]; then
-        echo -e "${C_YELLOW}⚠️ ไม่พบโฟลเดอร์ Autoexec (ระบบอาจสร้างขึ้นหลังจากเปิดเกมรอบแรก)${C_RESET}"
+        echo -e "${C_YELLOW}⚠️ ไม่พบโฟลเดอร์ Autoexec/Autoexecute (ระบบอาจสร้างขึ้นหลังจากเปิดเกมรอบแรก)${C_RESET}"
         sleep 2
         return
     fi
@@ -228,7 +230,8 @@ setup_cookie() {
     > "temp_pkg.txt"
     screen_count=0
     for line in $(pm list packages); do
-        if [[ "${line,,}" == *roblox.clien* ]]; then
+        # 📌 ปรับให้หาคำว่า roblox กว้างๆ
+        if [[ "${line,,}" == *roblox* ]]; then
             pkg_name="${line#package:}"
             echo "$pkg_name" >> "temp_pkg.txt"
             ((screen_count++))
@@ -236,7 +239,7 @@ setup_cookie() {
     done
 
     if (( screen_count == 0 )); then
-        echo -e "${C_RED}❌ ไม่พบแพ็กเกจที่ชื่อ 'roblox.clien'${C_RESET}"
+        echo -e "${C_RED}❌ ไม่พบแพ็กเกจของ Roblox${C_RESET}"
         read -p "🔍 พิมพ์ชื่อแอป (เช่น roblox, arceus) เพื่อหาใหม่: " custom_pkg
         if [[ -n "$custom_pkg" ]]; then
             > "temp_pkg.txt"
@@ -376,7 +379,7 @@ setup_manual_bind() {
     > "temp_pkg.txt"
     screen_count=0
     for line in $(pm list packages); do
-        if [[ "${line,,}" == *roblox.clien* ]]; then
+        if [[ "${line,,}" == *roblox* ]]; then
             pkg_name="${line#package:}"
             echo "$pkg_name" >> "temp_pkg.txt"
             ((screen_count++))
@@ -384,7 +387,7 @@ setup_manual_bind() {
     done
 
     if (( screen_count == 0 )); then
-        read -p "🔍 ไม่พบ 'roblox.clien' พิมพ์ชื่อแอป (เช่น arceus) เพื่อหาใหม่: " custom_pkg
+        read -p "🔍 ไม่พบ 'roblox' พิมพ์ชื่อแอป (เช่น arceus) เพื่อหาใหม่: " custom_pkg
         if [[ -n "$custom_pkg" ]]; then
             > "temp_pkg.txt"
             for line in $(pm list packages); do
@@ -430,7 +433,7 @@ setup_manual_bind() {
 }
 
 # ==========================================
-# เมนู 2.2: Smart Launch Scan (อัปเดตเปิดหน้าแรกก่อนยิงแมพ)
+# เมนู 2.2: Smart Launch Scan
 # ==========================================
 setup_smart_scan() {
     reset_ui
@@ -442,7 +445,7 @@ setup_smart_scan() {
     > "temp_pkg.txt"
     screen_count=0
     for line in $(pm list packages); do
-        if [[ "${line,,}" == *roblox.clien* ]]; then
+        if [[ "${line,,}" == *roblox* ]]; then
             pkg_name="${line#package:}"
             echo "$pkg_name" >> "temp_pkg.txt"
             ((screen_count++))
@@ -450,7 +453,7 @@ setup_smart_scan() {
     done
 
     if (( screen_count == 0 )); then
-        read -p "🔍 ไม่พบ 'roblox.clien' พิมพ์ชื่อแอป (เช่น arceus) เพื่อหาใหม่: " custom_pkg
+        read -p "🔍 ไม่พบ 'roblox' พิมพ์ชื่อแอป (เช่น arceus) เพื่อหาใหม่: " custom_pkg
         if [[ -n "$custom_pkg" ]]; then
             > "temp_pkg.txt"
             for line in $(pm list packages); do
@@ -487,12 +490,10 @@ setup_smart_scan() {
             su -c "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_*.txt' -exec rm -f {} + >/dev/null 2>&1"
             sleep 2
             
-            # 📌 เปิดหน้าแรกของแอปก่อน เพื่อให้ Executor ทำงาน
             echo -e "${C_YELLOW}   ⏳ กำลังเปิดแอปเพื่อรัน Executor (รอ 5 วิ)...${C_RESET}"
             su -c "monkey -p \"$pkg\" -c android.intent.category.LAUNCHER 1" > /dev/null 2>&1
             sleep 5
             
-            # 📌 จากนั้นค่อยยิงลิงก์เข้าแมพ
             echo -e "${C_YELLOW}   ⏳ กำลังส่งเข้าแมพและรอสคริปต์สร้างไฟล์ชีพจร (รอสูงสุด 90 วิ)...${C_RESET}"
             su -c "am start -a android.intent.action.VIEW -d 'roblox://placeId=$random_place' -p '$pkg'" > /dev/null 2>&1
             
