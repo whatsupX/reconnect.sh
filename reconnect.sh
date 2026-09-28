@@ -62,7 +62,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}           v12.7 (Fast Heartbeat Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}       v12.9 (Targeted Fast Scan Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -91,7 +91,7 @@ check_root() {
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ (อัปเดตความเร็วการส่งข้อมูล)
+# ฝัง Lua อัตโนมัติ (อัปเดตระบบสแกนล็อกเป้า)
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -101,8 +101,12 @@ inject_lua_script() {
         saved_webhook=$(tr -d '\r\n' < "$WEBHOOK_FILE")
     fi
 
-    su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
+    # 📌 สแกนตื้นสำหรับ Arceus X และสแกนลึกเฉพาะใน Android/data
+    > "$TEMP_FOLDERS"
+    su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexec' 2>/dev/null >> '$TEMP_FOLDERS'"
     su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'"
+    su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type d -iname 'autoexec' 2>/dev/null >> '$TEMP_FOLDERS'"
+    su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'"
 
     if [[ ! -s "$TEMP_FOLDERS" ]]; then
         echo -e "${C_YELLOW}⚠️ ไม่พบโฟลเดอร์ Autoexec/Autoexecute (ระบบอาจสร้างขึ้นหลังจากเปิดเกมรอบแรก)${C_RESET}"
@@ -148,7 +152,6 @@ GuiService.ErrorMessageChanged:Connect(function(errorMsg)
 end)
 
 task.spawn(function()
-    -- 📌 ปรับความเร็วการส่งชีพจรเป็น 3 วินาที (จากเดิม 10 วินาที)
     while task.wait(3) do
         if isDisconnected then break end
         pcall(function() writefile("ping_" .. playerName .. ".txt", tostring(os.time())) end)
@@ -500,7 +503,10 @@ setup_smart_scan() {
             echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}"
             
             su -c "am force-stop $pkg" > /dev/null 2>&1
-            su -c "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_*.txt' -exec rm -f {} + >/dev/null 2>&1"
+            
+            # 📌 ลบไฟล์เก่าด้วยระบบสแกนล็อกเป้าที่แม่นยำ
+            su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
+            su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
             sleep 2
             
             echo -e "${C_YELLOW}   ⏳ กำลังเปิดแอปเพื่อรัน Executor (รอ 5 วิ)...${C_RESET}"
@@ -515,8 +521,12 @@ setup_smart_scan() {
             local elapsed=0
             
             while (( elapsed < timeout )); do
-                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | head -n 1 > $TEMP_FIND"
-                local ping_file=$(cat "$TEMP_FIND" 2>/dev/null | tr -d '\r\n')
+                # 📌 สแกนล็อกเป้า แบบสายฟ้าแลบ
+                > "$TEMP_FIND"
+                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null >> $TEMP_FIND"
+                safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_*.txt' 2>/dev/null >> $TEMP_FIND"
+                
+                local ping_file=$(cat "$TEMP_FIND" 2>/dev/null | head -n 1 | tr -d '\r\n')
                 
                 if [[ -n "$ping_file" ]]; then
                     local filename="${ping_file##*/}" 
@@ -627,7 +637,9 @@ relaunch_pkg() {
     last_ping_times[$idx]=""
 
     if [[ -n "$target_uname" && "$target_uname" != "Unknown" ]]; then
-        safe_su "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_${target_uname}.txt' -delete 2>/dev/null"
+        # 📌 ลบไฟล์ชีพจรเก่าด้วยระบบล็อกเป้า
+        safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${target_uname}.txt' -delete 2>/dev/null"
+        safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_${target_uname}.txt' -delete 2>/dev/null"
     fi
     if [[ -n "${ping_paths[$idx]}" ]]; then
         safe_su "rm -f \"${ping_paths[$idx]}\""
@@ -825,8 +837,12 @@ start_auto_rejoin() {
             fi
 
             if [[ -z "${ping_paths[$i]}" ]]; then
-                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null \vert{} head -n 1 >$TEMP_FIND"
-                local final_path=$(cat "$TEMP_FIND" 2>/dev/null | tr -d '\r\n')
+                # 📌 สแกนล็อกเป้าแบบสายฟ้าแลบ ค้นหาเจาะจงเฉพาะระดับ 4 และ 6
+                > "$TEMP_FIND"
+                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null >>$TEMP_FIND"
+                safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_${uname}.txt' 2>/dev/null >>$TEMP_FIND"
+                
+                local final_path=$(cat "$TEMP_FIND" 2>/dev/null | head -n 1 | tr -d '\r\n')
                 if [[ -n "$final_path" ]]; then ping_paths[$i]="$final_path"; fi
             fi
 
@@ -847,7 +863,7 @@ start_auto_rejoin() {
                         colors[$i]="$C_GREEN"
                     else
                         diff=$((current_time -${last_ping_times[$i]:-$current_time}))
-                        if (( diff > 180 )); then
+                        if (( diff > 150 )); then
                             statuses[$i]="จอค้าง!"
                             colors[$i]="$C_RED"
                             draw_dashboard
