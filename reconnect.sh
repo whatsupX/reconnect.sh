@@ -62,7 +62,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v12.5 (Silent Background Tasks) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v12.6 (Name Sanitizer & Fast Timeout) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -316,7 +316,7 @@ setup_cookie() {
     
     for i in "${!found_pkgs[@]}"; do
         local pkg="${found_pkgs[$i]}"
-        pkg="${pkg//[$'\t\r\n ']/}"
+        pkg="${pkg//[$'\t\r\n \\']/}"
         
         if (( i < cookie_count )); then
             local cookie_val="${found_cookies[$i]}"
@@ -422,9 +422,11 @@ setup_manual_bind() {
         
         local input_data=()
         for pkg in "${found_pkgs[@]}"; do
-            pkg="${pkg//[$'\t\r\n ']/}"
+            pkg="${pkg//[$'\t\r\n \\']/}"
             read -p "👤 ใส่ Username ของจอ <$pkg>: " uname
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
+            # ล้างเครื่องหมาย \ ออก
+            uname="${uname//\\/}"
             input_data+=("$pkg:$uname")
         done
         
@@ -491,7 +493,7 @@ setup_smart_scan() {
         local random_place="189707"
         
         for pkg in "${found_pkgs[@]}"; do
-            pkg="${pkg//[$'\t\r\n ']/}"
+            pkg="${pkg//[$'\t\r\n \\']/}"
             
             reset_ui
             show_header
@@ -513,7 +515,6 @@ setup_smart_scan() {
             local elapsed=0
             
             while (( elapsed < timeout )); do
-                # สแกนแบบ Background Task ไม่ให้หน้าจอเละ
                 safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | head -n 1 > $TEMP_FIND"
                 local ping_file=$(cat "$TEMP_FIND" 2>/dev/null | tr -d '\r\n')
                 
@@ -548,6 +549,7 @@ setup_smart_scan() {
                 if [[ -z "$uname" ]]; then uname="Unknown"; fi
             fi
             
+            uname="${uname//\\/}" # กรอง \ ทิ้งอีกรอบเผื่อ user พิมพ์มา
             echo "$pkg:$uname" >> "$CONFIG_FILE"
             sleep 2
         done
@@ -716,7 +718,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop (โหมดทำความสะอาดเทอร์มินัล 100%)
+# เมนู 1: Rejoin Loop
 # ==========================================
 start_auto_rejoin() {
     reset_ui
@@ -765,8 +767,9 @@ start_auto_rejoin() {
     unames=()
     
     while IFS=':' read -r pkg uname; do 
-        pkg="${pkg//[$'\t\r\n ']/}"
-        uname="${uname//[$'\t\r\n ']/}"
+        # 📌 ล้าง \ และอักขระขยะออกจากชื่อก่อนนำไปใช้งาน
+        pkg="${pkg//[$'\t\r\n \\']/}"
+        uname="${uname//[$'\t\r\n \\']/}"
         
         if [[ -n "$pkg" ]]; then
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
@@ -800,7 +803,6 @@ start_auto_rejoin() {
         global_msg="${C_CYAN}👀 ระบบกำลังตรวจสอบ...${C_RESET}"
         current_time=$(date +%s)
         
-        # 📌 เขียนกระบวนการพื้นหลังลงไฟล์ ไม่พ่นออกเทอร์มินัลเด็ดขาด
         safe_su "ps -ef > $TEMP_PROCS 2>/dev/null \vert{}\vert{} ps -A >$TEMP_PROCS 2>/dev/null"
 
         for i in "${!pkgs[@]}"; do
@@ -810,7 +812,6 @@ start_auto_rejoin() {
             wait_time=$((current_time - launched_at))
             
             if (( wait_time > 20 )); then
-                # อ่านค่าจากไฟล์ลับ ไม่มีการดึงสดจากซูส
                 if ! grep -q "$pkg" "$TEMP_PROCS" 2>/dev/null; then
                     safe_su "pidof $pkg >$TEMP_PID 2>/dev/null"
                     local is_alive=$(cat "$TEMP_PID" 2>/dev/null | tr -d '\r\n')
@@ -859,7 +860,8 @@ start_auto_rejoin() {
                     fi
                 fi
             else
-                if (( wait_time > 300 )); then 
+                # 📌 ปรับลดเวลา Timeout กลับมาเหลือ 150 วินาทีตามที่ผู้ใช้ต้องการ
+                if (( wait_time > 150 )); then 
                     statuses[$i]="โหลดค้าง!"
                     colors[$i]="$C_RED"
                     draw_dashboard
