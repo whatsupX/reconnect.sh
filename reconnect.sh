@@ -62,7 +62,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}       v12.9 (Targeted Fast Scan Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v13.0 (60s Timeout & Name Clean) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -91,7 +91,7 @@ check_root() {
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ (อัปเดตระบบสแกนล็อกเป้า)
+# ฝัง Lua อัตโนมัติ
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -101,12 +101,8 @@ inject_lua_script() {
         saved_webhook=$(tr -d '\r\n' < "$WEBHOOK_FILE")
     fi
 
-    # 📌 สแกนตื้นสำหรับ Arceus X และสแกนลึกเฉพาะใน Android/data
-    > "$TEMP_FOLDERS"
-    su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexec' 2>/dev/null >> '$TEMP_FOLDERS'"
-    su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'"
-    su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type d -iname 'autoexec' 2>/dev/null >> '$TEMP_FOLDERS'"
-    su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'"
+    su -c "find /storage/emulated/0 -maxdepth 8 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
+    su -c "find /storage/emulated/0 -maxdepth 8 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'"
 
     if [[ ! -s "$TEMP_FOLDERS" ]]; then
         echo -e "${C_YELLOW}⚠️ ไม่พบโฟลเดอร์ Autoexec/Autoexecute (ระบบอาจสร้างขึ้นหลังจากเปิดเกมรอบแรก)${C_RESET}"
@@ -319,8 +315,8 @@ setup_cookie() {
     local assigned=0
     
     for i in "${!found_pkgs[@]}"; do
-        local pkg="${found_pkgs[$i]}"
-        pkg="${pkg//[$'\t\r\n ']/}"
+        local raw_pkg="${found_pkgs[$i]}"
+        local pkg=$(echo "$raw_pkg" | tr -d ' \t\r\n\\')
         
         if (( i < cookie_count )); then
             local cookie_val="${found_cookies[$i]}"
@@ -425,11 +421,11 @@ setup_manual_bind() {
         done < "temp_pkg.txt"
         
         local input_data=()
-        for pkg in "${found_pkgs[@]}"; do
-            pkg="${pkg//[$'\t\r\n \\']/}"
+        for raw_pkg in "${found_pkgs[@]}"; do
+            local pkg=$(echo "$raw_pkg" | tr -d ' \t\r\n\\')
             read -p "👤 ใส่ Username ของจอ <$pkg>: " uname
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
-            uname="${uname//\\/}"
+            uname=$(echo "$uname" | tr -d ' \t\r\n\\')
             input_data+=("$pkg:$uname")
         done
         
@@ -495,18 +491,15 @@ setup_smart_scan() {
         > "$CONFIG_FILE"
         local random_place="189707"
         
-        for pkg in "${found_pkgs[@]}"; do
-            pkg="${pkg//[$'\t\r\n \\']/}"
+        for raw_pkg in "${found_pkgs[@]}"; do
+            local pkg=$(echo "$raw_pkg" | tr -d ' \t\r\n\\')
             
             reset_ui
             show_header
             echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}"
             
             su -c "am force-stop $pkg" > /dev/null 2>&1
-            
-            # 📌 ลบไฟล์เก่าด้วยระบบสแกนล็อกเป้าที่แม่นยำ
-            su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
-            su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
+            su -c "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_*.txt' -exec rm -f {} + >/dev/null 2>&1"
             sleep 2
             
             echo -e "${C_YELLOW}   ⏳ กำลังเปิดแอปเพื่อรัน Executor (รอ 5 วิ)...${C_RESET}"
@@ -521,12 +514,8 @@ setup_smart_scan() {
             local elapsed=0
             
             while (( elapsed < timeout )); do
-                # 📌 สแกนล็อกเป้า แบบสายฟ้าแลบ
-                > "$TEMP_FIND"
-                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null >> $TEMP_FIND"
-                safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_*.txt' 2>/dev/null >> $TEMP_FIND"
-                
-                local ping_file=$(cat "$TEMP_FIND" 2>/dev/null | head -n 1 | tr -d '\r\n')
+                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | head -n 1 > $TEMP_FIND"
+                local ping_file=$(cat "$TEMP_FIND" 2>/dev/null | tr -d '\r\n')
                 
                 if [[ -n "$ping_file" ]]; then
                     local filename="${ping_file##*/}" 
@@ -559,7 +548,7 @@ setup_smart_scan() {
                 if [[ -z "$uname" ]]; then uname="Unknown"; fi
             fi
             
-            uname="${uname//\\/}"
+            uname=$(echo "$uname" | tr -d ' \t\r\n\\')
             echo "$pkg:$uname" >> "$CONFIG_FILE"
             sleep 2
         done
@@ -637,7 +626,6 @@ relaunch_pkg() {
     last_ping_times[$idx]=""
 
     if [[ -n "$target_uname" && "$target_uname" != "Unknown" ]]; then
-        # 📌 ลบไฟล์ชีพจรเก่าด้วยระบบล็อกเป้า
         safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${target_uname}.txt' -delete 2>/dev/null"
         safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_${target_uname}.txt' -delete 2>/dev/null"
     fi
@@ -730,7 +718,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop
+# เมนู 1: Rejoin Loop (ปรับเวลา Timeout เป็น 60s)
 # ==========================================
 start_auto_rejoin() {
     reset_ui
@@ -778,9 +766,10 @@ start_auto_rejoin() {
     pkgs=()
     unames=()
     
-    while IFS=':' read -r pkg uname; do 
-        pkg="${pkg//[$'\t\r\n \\']/}"
-        uname="${uname//[$'\t\r\n \\']/}"
+    while IFS=':' read -r raw_pkg raw_uname; do 
+        # 📌 ล้างสัญลักษณ์ \ และอักขระขยะออกจากชื่อเด็ดขาด
+        local pkg=$(echo "$raw_pkg" | tr -d ' \t\r\n\\')
+        local uname=$(echo "$raw_uname" | tr -d ' \t\r\n\\')
         
         if [[ -n "$pkg" ]]; then
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
@@ -837,7 +826,6 @@ start_auto_rejoin() {
             fi
 
             if [[ -z "${ping_paths[$i]}" ]]; then
-                # 📌 สแกนล็อกเป้าแบบสายฟ้าแลบ ค้นหาเจาะจงเฉพาะระดับ 4 และ 6
                 > "$TEMP_FIND"
                 safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null >>$TEMP_FIND"
                 safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_${uname}.txt' 2>/dev/null >>$TEMP_FIND"
@@ -863,7 +851,8 @@ start_auto_rejoin() {
                         colors[$i]="$C_GREEN"
                     else
                         diff=$((current_time -${last_ping_times[$i]:-$current_time}))
-                        if (( diff > 150 )); then
+                        # 📌 เปลี่ยนเวลารอจาก 150 วิ เป็น 60 วิ ตามที่คุณต้องการ
+                        if (( diff > 60 )); then
                             statuses[$i]="จอค้าง!"
                             colors[$i]="$C_RED"
                             draw_dashboard
