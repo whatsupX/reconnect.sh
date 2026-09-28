@@ -10,13 +10,21 @@ C_RED='\033[31m'
 C_PURPLE='\033[35m'
 C_RESET='\033[0m'
 
+# ==========================================
+# กำหนดไฟล์ระบบและไฟล์ชั่วคราว (Temp Files)
+# ==========================================
 CONFIG_FILE="roblox_accounts.cfg"
 WEBHOOK_FILE="webhook.cfg"
 COOKIE_FILE="roblox_cookies.cfg"
 LUA_FILENAME="status_check.lua"
+DL_COOKIE_FILE="/storage/emulated/0/Download/cookie.txt"
+
 TEMP_LUA="/storage/emulated/0/temp_status_check.lua"
 TEMP_FOLDERS="/storage/emulated/0/temp_autoexec_folders.txt"
-DL_COOKIE_FILE="/storage/emulated/0/Download/cookie.txt"
+TEMP_PROCS="/storage/emulated/0/temp_procs.txt"
+TEMP_PID="/storage/emulated/0/temp_pid.txt"
+TEMP_FIND="/storage/emulated/0/temp_find.txt"
+TEMP_PING_VAL="/storage/emulated/0/temp_ping_val.txt"
 
 # ค่าเบราว์เซอร์ปลอมเพื่อหลบหลีกการบล็อกของ Roblox
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -28,6 +36,11 @@ if [[ -f "$CONFIG_FILE" ]]; then
         rm "$CONFIG_FILE"
     fi
 fi
+
+# ฟังก์ชันล้างไฟล์ชั่วคราวทั้งหมด
+cleanup_temp() {
+    rm -f "$TEMP_PROCS" "$TEMP_PID" "$TEMP_FIND" "$TEMP_PING_VAL" "$TEMP_LUA" "$TEMP_FOLDERS" 2>/dev/null
+}
 
 # ==========================================
 # ฟังก์ชันรีเซ็ตหน้าจอขั้นเด็ดขาด (Nuclear Reset)
@@ -49,12 +62,12 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v12.4 (Ultra Optimize & Deep Cache) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v12.5 (Silent Background Tasks) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
 # ==========================================
-# ฟังก์ชันรันคำสั่ง Root
+# ฟังก์ชันรันคำสั่ง Root แบบแยกการแทรกแซงหน้าจอ 100%
 # ==========================================
 safe_su() {
     su -c "$1" < /dev/null > /dev/null 2>&1
@@ -151,8 +164,8 @@ EOF
         fi
     done < "$TEMP_FOLDERS"
 
-    rm "$TEMP_LUA" 2>/dev/null
-    rm "$TEMP_FOLDERS" 2>/dev/null
+    rm -f "$TEMP_LUA" 2>/dev/null
+    rm -f "$TEMP_FOLDERS" 2>/dev/null
     sleep 2
 }
 
@@ -253,7 +266,7 @@ setup_cookie() {
 
     if (( screen_count == 0 )); then
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย ยกเลิกการทำรายการ${C_RESET}"
-        rm "temp_pkg.txt" 2>/dev/null
+        rm -f "temp_pkg.txt" 2>/dev/null
         sleep 2
         return
     fi
@@ -289,7 +302,7 @@ setup_cookie() {
     
     if (( cookie_count == 0 )); then
         echo -e "\n${C_RED}❌ ไม่พบ Cookie ในไฟล์ หรือไฟล์ว่างเปล่า!${C_RESET}"
-        rm "temp_pkg.txt" 2>/dev/null
+        rm -f "temp_pkg.txt" 2>/dev/null
         sleep 3
         return
     fi
@@ -327,7 +340,7 @@ setup_cookie() {
         fi
     done
     
-    rm "temp_pkg.txt" 2>/dev/null
+    rm -f "temp_pkg.txt" 2>/dev/null
     
     echo -e "\n${C_GREEN}🎉 บันทึก Cookie และผูกบัญชีสำเร็จ! (ดำเนินการให้ $assigned จอ)${C_RESET}"
     sleep 4
@@ -353,7 +366,7 @@ setup_webhook() {
     read -p "🔗 กรุณาใส่ลิงก์ Discord Webhook ใหม่: " webhook_url
     
     if [[ "$webhook_url" == "clear" ]]; then
-        rm "$WEBHOOK_FILE" 2>/dev/null
+        rm -f "$WEBHOOK_FILE" 2>/dev/null
         echo -e "${C_GREEN}✅ ลบ Webhook เรียบร้อยแล้ว!${C_RESET}"
     elif [[ -n "$webhook_url" ]]; then
         echo "$webhook_url" > "$WEBHOOK_FILE"
@@ -420,12 +433,12 @@ setup_manual_bind() {
             echo "$data" >> "$CONFIG_FILE"
         done
         
-        rm "temp_pkg.txt" 2>/dev/null
+        rm -f "temp_pkg.txt" 2>/dev/null
         echo -e "\n${C_GREEN}🎉 บันทึกข้อมูลเรียบร้อยแล้ว!${C_RESET}"
         sleep 2
     else
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย${C_RESET}"
-        rm "temp_pkg.txt" 2>/dev/null
+        rm -f "temp_pkg.txt" 2>/dev/null
         sleep 2
     fi
 }
@@ -500,7 +513,9 @@ setup_smart_scan() {
             local elapsed=0
             
             while (( elapsed < timeout )); do
-                local ping_file=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | head -n 1" | tr -d '\r\n')
+                # สแกนแบบ Background Task ไม่ให้หน้าจอเละ
+                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | head -n 1 > $TEMP_FIND"
+                local ping_file=$(cat "$TEMP_FIND" 2>/dev/null | tr -d '\r\n')
                 
                 if [[ -n "$ping_file" ]]; then
                     local filename="${ping_file##*/}" 
@@ -537,12 +552,12 @@ setup_smart_scan() {
             sleep 2
         done
         
-        rm "temp_pkg.txt" 2>/dev/null
+        rm -f "temp_pkg.txt" 2>/dev/null
         echo -e "\n${C_GREEN}🎉 บันทึกข้อมูลและผูกหน้าจอเรียบร้อยแล้ว!${C_RESET}"
         sleep 4
     else
         echo -e "${C_RED}❌ ไม่พบแพ็กเกจเลย${C_RESET}"
-        rm "temp_pkg.txt" 2>/dev/null
+        rm -f "temp_pkg.txt" 2>/dev/null
         sleep 2
     fi
 }
@@ -599,7 +614,7 @@ draw_dashboard() {
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอเข้าแมพ (อัปเดตระบบล้างแคชลึก)
+# ฟังก์ชันเปิดจอเข้าแมพ
 # ==========================================
 relaunch_pkg() {
     local p="$1"
@@ -621,7 +636,6 @@ relaunch_pkg() {
     colors[$idx]="$C_CYAN"
     draw_dashboard
     
-    # 📌 ล้างแคชลึกถึงระดับระบบของแอป (Internal & External Cache)
     safe_su "rm -rf /data/data/$p/cache/* 2>/dev/null"
     safe_su "rm -rf /data/data/$p/code_cache/* 2>/dev/null"
     safe_su "rm -rf /storage/emulated/0/Android/data/$p/cache/* 2>/dev/null"
@@ -702,7 +716,7 @@ relaunch_pkg() {
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop (ลดการกิน CPU Termux ลง 90%)
+# เมนู 1: Rejoin Loop (โหมดทำความสะอาดเทอร์มินัล 100%)
 # ==========================================
 start_auto_rejoin() {
     reset_ui
@@ -786,8 +800,8 @@ start_auto_rejoin() {
         global_msg="${C_CYAN}👀 ระบบกำลังตรวจสอบ...${C_RESET}"
         current_time=$(date +%s)
         
-        # 📌 ดึงข้อมูลโปรเซสเครื่องแค่ครั้งเดียวต่อรอบ (ลดการใช้ CPU ของมือถือลง 90%)
-        local all_procs=$(su -c "ps -A 2>/dev/null")
+        # 📌 เขียนกระบวนการพื้นหลังลงไฟล์ ไม่พ่นออกเทอร์มินัลเด็ดขาด
+        safe_su "ps -ef > $TEMP_PROCS 2>/dev/null \vert{}\vert{} ps -A >$TEMP_PROCS 2>/dev/null"
 
         for i in "${!pkgs[@]}"; do
             pkg="${pkgs[$i]}"
@@ -796,10 +810,10 @@ start_auto_rejoin() {
             wait_time=$((current_time - launched_at))
             
             if (( wait_time > 20 )); then
-                # ตรวจสอบรายชื่อแอปจากตัวแปรเดียว ไม่ต้องยิงคำสั่ง Su รัวๆ
-                if ! echo "$all_procs" \vert{} grep -q "$pkg"; then
-                    # ยืนยันซ้ำอีกครั้ง เพื่อป้องกันการดึงค่าพลาดตอนเครื่องกระตุก
-                    local is_alive=$(su -c "pidof $pkg" 2>/dev/null)
+                # อ่านค่าจากไฟล์ลับ ไม่มีการดึงสดจากซูส
+                if ! grep -q "$pkg" "$TEMP_PROCS" 2>/dev/null; then
+                    safe_su "pidof $pkg >$TEMP_PID 2>/dev/null"
+                    local is_alive=$(cat "$TEMP_PID" 2>/dev/null | tr -d '\r\n')
                     if [[ -z "$is_alive" ]]; then
                         statuses[$i]="จอเด้งหลุด!"
                         colors[$i]="$C_RED"
@@ -811,12 +825,14 @@ start_auto_rejoin() {
             fi
 
             if [[ -z "${ping_paths[$i]}" ]]; then
-                local final_path=$(su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null | head -n 1" | tr -d '\r\n')
+                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null \vert{} head -n 1 >$TEMP_FIND"
+                local final_path=$(cat "$TEMP_FIND" 2>/dev/null | tr -d '\r\n')
                 if [[ -n "$final_path" ]]; then ping_paths[$i]="$final_path"; fi
             fi
 
             if [[ -n "${ping_paths[$i]}" ]]; then
-                last_ping=$(su -c "cat '${ping_paths[$i]}'" 2>/dev/null | tr -d '\r\n ')
+                safe_su "cat '${ping_paths[$i]}' 2>/dev/null >$TEMP_PING_VAL"
+                last_ping=$(cat "$TEMP_PING_VAL" 2>/dev/null | tr -d '\r\n ')
                 
                 if [[ "$last_ping" == "DEAD" ]]; then
                     statuses[$i]="หลุดเซิร์ฟเวอร์!"
@@ -831,7 +847,6 @@ start_auto_rejoin() {
                         colors[$i]="$C_GREEN"
                     else
                         diff=$((current_time -${last_ping_times[$i]:-$current_time}))
-                        # 📌 เพิ่มเวลารอการอัปเดตไฟล์เป็น 180 วิ ป้องกันการรีจอยซ้อนตอนข้ามแมพ
                         if (( diff > 180 )); then
                             statuses[$i]="จอค้าง!"
                             colors[$i]="$C_RED"
@@ -844,7 +859,6 @@ start_auto_rejoin() {
                     fi
                 fi
             else
-                # 📌 ขยายเวลารอโหลดแมพครั้งแรกเป็น 300 วินาที 
                 if (( wait_time > 300 )); then 
                     statuses[$i]="โหลดค้าง!"
                     colors[$i]="$C_RED"
@@ -865,7 +879,7 @@ start_auto_rejoin() {
 # ==========================================
 # ดักจับ Ctrl+C
 # ==========================================
-trap 'reset_ui; tput cnorm; exit' INT
+trap 'reset_ui; cleanup_temp; tput cnorm; exit' INT
 
 # ==========================================
 # เริ่มการทำงาน 
@@ -895,7 +909,7 @@ while true; do
         3) setup_webhook ;;
         4) setup_cookie ;;
         5) execute_cookie_login ;;
-        0) reset_ui; tput cnorm; exit 0 ;;
+        0) reset_ui; cleanup_temp; tput cnorm; exit 0 ;;
         *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
     esac
 done
