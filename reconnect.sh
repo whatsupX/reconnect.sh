@@ -62,7 +62,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v12.6 (Name Sanitizer & Fast Timeout) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}           v12.7 (Fast Heartbeat Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -91,7 +91,7 @@ check_root() {
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ
+# ฝัง Lua อัตโนมัติ (อัปเดตความเร็วการส่งข้อมูล)
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -148,7 +148,8 @@ GuiService.ErrorMessageChanged:Connect(function(errorMsg)
 end)
 
 task.spawn(function()
-    while task.wait(10) do
+    -- 📌 ปรับความเร็วการส่งชีพจรเป็น 3 วินาที (จากเดิม 10 วินาที)
+    while task.wait(3) do
         if isDisconnected then break end
         pcall(function() writefile("ping_" .. playerName .. ".txt", tostring(os.time())) end)
     end
@@ -316,7 +317,7 @@ setup_cookie() {
     
     for i in "${!found_pkgs[@]}"; do
         local pkg="${found_pkgs[$i]}"
-        pkg="${pkg//[$'\t\r\n \\']/}"
+        pkg="${pkg//[$'\t\r\n ']/}"
         
         if (( i < cookie_count )); then
             local cookie_val="${found_cookies[$i]}"
@@ -425,7 +426,6 @@ setup_manual_bind() {
             pkg="${pkg//[$'\t\r\n \\']/}"
             read -p "👤 ใส่ Username ของจอ <$pkg>: " uname
             if [[ -z "$uname" ]]; then uname="Unknown"; fi
-            # ล้างเครื่องหมาย \ ออก
             uname="${uname//\\/}"
             input_data+=("$pkg:$uname")
         done
@@ -549,7 +549,7 @@ setup_smart_scan() {
                 if [[ -z "$uname" ]]; then uname="Unknown"; fi
             fi
             
-            uname="${uname//\\/}" # กรอง \ ทิ้งอีกรอบเผื่อ user พิมพ์มา
+            uname="${uname//\\/}"
             echo "$pkg:$uname" >> "$CONFIG_FILE"
             sleep 2
         done
@@ -767,7 +767,6 @@ start_auto_rejoin() {
     unames=()
     
     while IFS=':' read -r pkg uname; do 
-        # 📌 ล้าง \ และอักขระขยะออกจากชื่อก่อนนำไปใช้งาน
         pkg="${pkg//[$'\t\r\n \\']/}"
         uname="${uname//[$'\t\r\n \\']/}"
         
@@ -860,7 +859,6 @@ start_auto_rejoin() {
                     fi
                 fi
             else
-                # 📌 ปรับลดเวลา Timeout กลับมาเหลือ 150 วินาทีตามที่ผู้ใช้ต้องการ
                 if (( wait_time > 150 )); then 
                     statuses[$i]="โหลดค้าง!"
                     colors[$i]="$C_RED"
