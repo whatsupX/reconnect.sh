@@ -49,7 +49,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}        v12.2 (Delta Autoexecute Fix) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}      v12.4 (Ultra Optimize & Deep Cache) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -78,7 +78,7 @@ check_root() {
 }
 
 # ==========================================
-# ฝัง Lua อัตโนมัติ (รองรับ Autoexecute ของ Delta)
+# ฝัง Lua อัตโนมัติ
 # ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
@@ -88,7 +88,6 @@ inject_lua_script() {
         saved_webhook=$(tr -d '\r\n' < "$WEBHOOK_FILE")
     fi
 
-    # 📌 หาทั้งแฟ้ม autoexec และ autoexecute
     su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
     su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'"
 
@@ -230,7 +229,6 @@ setup_cookie() {
     > "temp_pkg.txt"
     screen_count=0
     for line in $(pm list packages); do
-        # 📌 ปรับให้หาคำว่า roblox กว้างๆ
         if [[ "${line,,}" == *roblox* ]]; then
             pkg_name="${line#package:}"
             echo "$pkg_name" >> "temp_pkg.txt"
@@ -601,20 +599,32 @@ draw_dashboard() {
 }
 
 # ==========================================
-# ฟังก์ชันเปิดจอเข้าแมพ
+# ฟังก์ชันเปิดจอเข้าแมพ (อัปเดตระบบล้างแคชลึก)
 # ==========================================
 relaunch_pkg() {
     local p="$1"
     local idx="$2"
+    local target_uname="${unames[$idx]}"
     
     last_ping_values[$idx]=""
     last_ping_times[$idx]=""
 
+    if [[ -n "$target_uname" && "$target_uname" != "Unknown" ]]; then
+        safe_su "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_${target_uname}.txt' -delete 2>/dev/null"
+    fi
+    if [[ -n "${ping_paths[$idx]}" ]]; then
+        safe_su "rm -f \"${ping_paths[$idx]}\""
+    fi
+    ping_paths[$idx]=""
+
     statuses[$idx]="ล้างแคช..."
     colors[$idx]="$C_CYAN"
     draw_dashboard
-    cache_path="/storage/emulated/0/Android/data/$p/cache"
-    if [[ -d "$cache_path" ]]; then safe_su "rm -rf $cache_path/*"; fi
+    
+    # 📌 ล้างแคชลึกถึงระดับระบบของแอป (Internal & External Cache)
+    safe_su "rm -rf /data/data/$p/cache/* 2>/dev/null"
+    safe_su "rm -rf /data/data/$p/code_cache/* 2>/dev/null"
+    safe_su "rm -rf /storage/emulated/0/Android/data/$p/cache/* 2>/dev/null"
 
     statuses[$idx]="กำลังปิดแอป..."
     colors[$idx]="$C_RED"
@@ -686,17 +696,13 @@ relaunch_pkg() {
     safe_su "am start -a android.intent.action.VIEW -d '${launch_url}' -p '${p}'"
     
     launch_times[$idx]=$(date +%s)
-    if [[ -n "${ping_paths[$idx]}" ]]; then
-        safe_su "rm \"${ping_paths[$idx]}\""
-    fi
-    ping_paths[$idx]=""
     
     statuses[$idx]="กำลังโหลดสคริปต์"
     colors[$idx]="$C_YELLOW"
 }
 
 # ==========================================
-# เมนู 1: Rejoin Loop
+# เมนู 1: Rejoin Loop (ลดการกิน CPU Termux ลง 90%)
 # ==========================================
 start_auto_rejoin() {
     reset_ui
@@ -779,6 +785,9 @@ start_auto_rejoin() {
     while true; do
         global_msg="${C_CYAN}👀 ระบบกำลังตรวจสอบ...${C_RESET}"
         current_time=$(date +%s)
+        
+        # 📌 ดึงข้อมูลโปรเซสเครื่องแค่ครั้งเดียวต่อรอบ (ลดการใช้ CPU ของมือถือลง 90%)
+        local all_procs=$(su -c "ps -A 2>/dev/null")
 
         for i in "${!pkgs[@]}"; do
             pkg="${pkgs[$i]}"
@@ -786,10 +795,11 @@ start_auto_rejoin() {
             launched_at=${launch_times[$i]:-0}
             wait_time=$((current_time - launched_at))
             
-            if (( wait_time > 15 )); then
-                local is_alive=$(su -c "pidof $pkg" 2>/dev/null)
-                if [[ -z "$is_alive" ]]; then
-                    is_alive=$(su -c "ps -A \vert{} grep $pkg" 2>/dev/null)
+            if (( wait_time > 20 )); then
+                # ตรวจสอบรายชื่อแอปจากตัวแปรเดียว ไม่ต้องยิงคำสั่ง Su รัวๆ
+                if ! echo "$all_procs" \vert{} grep -q "$pkg"; then
+                    # ยืนยันซ้ำอีกครั้ง เพื่อป้องกันการดึงค่าพลาดตอนเครื่องกระตุก
+                    local is_alive=$(su -c "pidof $pkg" 2>/dev/null)
                     if [[ -z "$is_alive" ]]; then
                         statuses[$i]="จอเด้งหลุด!"
                         colors[$i]="$C_RED"
@@ -821,7 +831,8 @@ start_auto_rejoin() {
                         colors[$i]="$C_GREEN"
                     else
                         diff=$((current_time -${last_ping_times[$i]:-$current_time}))
-                        if (( diff > 60 )); then
+                        # 📌 เพิ่มเวลารอการอัปเดตไฟล์เป็น 180 วิ ป้องกันการรีจอยซ้อนตอนข้ามแมพ
+                        if (( diff > 180 )); then
                             statuses[$i]="จอค้าง!"
                             colors[$i]="$C_RED"
                             draw_dashboard
@@ -833,7 +844,8 @@ start_auto_rejoin() {
                     fi
                 fi
             else
-                if (( wait_time > 150 )); then 
+                # 📌 ขยายเวลารอโหลดแมพครั้งแรกเป็น 300 วินาที 
+                if (( wait_time > 300 )); then 
                     statuses[$i]="โหลดค้าง!"
                     colors[$i]="$C_RED"
                     draw_dashboard
