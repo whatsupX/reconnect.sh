@@ -26,10 +26,8 @@ TEMP_PID="/storage/emulated/0/temp_pid.txt"
 TEMP_FIND="/storage/emulated/0/temp_find.txt"
 TEMP_PING_VAL="/storage/emulated/0/temp_ping_val.txt"
 
-# ค่าเบราว์เซอร์ปลอมเพื่อหลบหลีกการบล็อกของ Roblox
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-# ล้างไฟล์ตั้งค่าที่พัง
 if [[ -f "$CONFIG_FILE" ]]; then
     check_bad=$(grep "vert" "$CONFIG_FILE" 2>/dev/null)
     if [[ -n "$check_bad" ]]; then
@@ -37,14 +35,10 @@ if [[ -f "$CONFIG_FILE" ]]; then
     fi
 fi
 
-# ฟังก์ชันล้างไฟล์ชั่วคราวทั้งหมด
 cleanup_temp() {
     rm -f "$TEMP_PROCS" "$TEMP_PID" "$TEMP_FIND" "$TEMP_PING_VAL" "$TEMP_LUA" "$TEMP_FOLDERS" 2>/dev/null
 }
 
-# ==========================================
-# ฟังก์ชันรีเซ็ตหน้าจอขั้นเด็ดขาด (Nuclear Reset)
-# ==========================================
 reset_ui() {
     stty sane 2>/dev/null
     stty onlcr 2>/dev/null
@@ -52,9 +46,6 @@ reset_ui() {
     clear
 }
 
-# ==========================================
-# ฟังก์ชันแสดงส่วนหัว
-# ==========================================
 show_header() {
     echo -e "${C_CYAN}██╗    ██╗██╗  ██╗ █████╗ ████████╗███████╗██╗   ██╗██████╗ ██╗  ██╗${C_RESET}"
     echo -e "${C_CYAN}██║    ██║██║  ██║██╔══██╗╚══██╔══╝██╔════╝██║   ██║██╔══██╗╚██╗██╔╝${C_RESET}"
@@ -62,20 +53,14 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}      v13.0 (60s Timeout & Name Clean) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}               v13.2 :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
-# ==========================================
-# ฟังก์ชันรันคำสั่ง Root แบบแยกการแทรกแซงหน้าจอ 100%
-# ==========================================
 safe_su() {
     su -c "$1" < /dev/null > /dev/null 2>&1
 }
 
-# ==========================================
-# ระบบตรวจสอบ Root
-# ==========================================
 check_root() {
     reset_ui
     show_header
@@ -90,9 +75,6 @@ check_root() {
     fi
 }
 
-# ==========================================
-# ฝัง Lua อัตโนมัติ
-# ==========================================
 inject_lua_script() {
     echo -e "${C_YELLOW}🔍 กำลังตรวจสอบและฝังสคริปต์ลงใน Autoexec อัตโนมัติ...${C_RESET}"
     
@@ -101,8 +83,11 @@ inject_lua_script() {
         saved_webhook=$(tr -d '\r\n' < "$WEBHOOK_FILE")
     fi
 
-    su -c "find /storage/emulated/0 -maxdepth 8 -type d -iname 'autoexec' 2>/dev/null > '$TEMP_FOLDERS'"
-    su -c "find /storage/emulated/0 -maxdepth 8 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'"
+    > "$TEMP_FOLDERS"
+    su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexec' 2>/dev/null >> '$TEMP_FOLDERS'"
+    su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'"
+    su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type d -iname 'autoexec' 2>/dev/null >> '$TEMP_FOLDERS'"
+    su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'"
 
     if [[ ! -s "$TEMP_FOLDERS" ]]; then
         echo -e "${C_YELLOW}⚠️ ไม่พบโฟลเดอร์ Autoexec/Autoexecute (ระบบอาจสร้างขึ้นหลังจากเปิดเกมรอบแรก)${C_RESET}"
@@ -169,9 +154,6 @@ EOF
     sleep 2
 }
 
-# ==========================================
-# เมนู 5: รันล็อคอินเข้าหน้าแรก
-# ==========================================
 execute_cookie_login() {
     reset_ui
     show_header
@@ -231,9 +213,6 @@ execute_cookie_login() {
     read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
 }
 
-# ==========================================
-# เมนู 4: ระบบใส่ Cookie
-# ==========================================
 setup_cookie() {
     reset_ui
     show_header
@@ -346,9 +325,6 @@ setup_cookie() {
     sleep 4
 }
 
-# ==========================================
-# เมนู 3: จัดการ Webhook
-# ==========================================
 setup_webhook() {
     reset_ui
     show_header
@@ -379,9 +355,6 @@ setup_webhook() {
     read -p "กด Enter เพื่อกลับไปเมนูหลัก..."
 }
 
-# ==========================================
-# เมนู 2.1: Manual Bind
-# ==========================================
 setup_manual_bind() {
     reset_ui
     show_header
@@ -444,9 +417,6 @@ setup_manual_bind() {
     fi
 }
 
-# ==========================================
-# เมนู 2.2: Smart Launch Scan
-# ==========================================
 setup_smart_scan() {
     reset_ui
     show_header
@@ -499,7 +469,8 @@ setup_smart_scan() {
             echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}"
             
             su -c "am force-stop $pkg" > /dev/null 2>&1
-            su -c "find /storage/emulated/0 -maxdepth 5 -type f -iname 'ping_*.txt' -exec rm -f {} + >/dev/null 2>&1"
+            su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
+            su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
             sleep 2
             
             echo -e "${C_YELLOW}   ⏳ กำลังเปิดแอปเพื่อรัน Executor (รอ 5 วิ)...${C_RESET}"
@@ -514,8 +485,11 @@ setup_smart_scan() {
             local elapsed=0
             
             while (( elapsed < timeout )); do
-                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null | head -n 1 > $TEMP_FIND"
-                local ping_file=$(cat "$TEMP_FIND" 2>/dev/null | tr -d '\r\n')
+                > "$TEMP_FIND"
+                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' 2>/dev/null >> $TEMP_FIND"
+                safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_*.txt' 2>/dev/null >> $TEMP_FIND"
+                
+                local ping_file=$(cat "$TEMP_FIND" 2>/dev/null | head -n 1 | tr -d '\r\n')
                 
                 if [[ -n "$ping_file" ]]; then
                     local filename="${ping_file##*/}" 
@@ -563,9 +537,6 @@ setup_smart_scan() {
     fi
 }
 
-# ==========================================
-# เมนู 2: เลือกโหมด Auto Setup
-# ==========================================
 start_auto_setup_menu() {
     while true; do
         reset_ui
@@ -589,9 +560,6 @@ start_auto_setup_menu() {
     done
 }
 
-# ==========================================
-# ระบบวาดตาราง Dashboard 
-# ==========================================
 draw_dashboard() {
     reset_ui
     show_header
@@ -607,16 +575,13 @@ draw_dashboard() {
         local acc="${unames[$j]}"
         local stat="${statuses[$j]}"
         local col="${colors[$j]}"
-        printf "${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET}${col}%-20s${C_RESET}${C_CYAN}│${C_RESET}\n" "$pkg" "$acc" "$stat"
+        printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} ${col}%-20s${C_RESET} ${C_CYAN}│${C_RESET}\n" "$pkg" "$acc" "$stat"
     done
     
     echo -e "${C_CYAN}└──────────────────┴──────────────────┴──────────────────────┘${C_RESET}"
     echo -e "${C_RED}< กด Ctrl+C เพื่อหยุดการทำงาน >${C_RESET}"
 }
 
-# ==========================================
-# ฟังก์ชันเปิดจอเข้าแมพ
-# ==========================================
 relaunch_pkg() {
     local p="$1"
     local idx="$2"
@@ -717,9 +682,6 @@ relaunch_pkg() {
     colors[$idx]="$C_YELLOW"
 }
 
-# ==========================================
-# เมนู 1: Rejoin Loop (ปรับเวลา Timeout เป็น 60s)
-# ==========================================
 start_auto_rejoin() {
     reset_ui
     show_header
@@ -767,7 +729,6 @@ start_auto_rejoin() {
     unames=()
     
     while IFS=':' read -r raw_pkg raw_uname; do 
-        # 📌 ล้างสัญลักษณ์ \ และอักขระขยะออกจากชื่อเด็ดขาด
         local pkg=$(echo "$raw_pkg" | tr -d ' \t\r\n\\')
         local uname=$(echo "$raw_uname" | tr -d ' \t\r\n\\')
         
@@ -793,6 +754,8 @@ start_auto_rejoin() {
 
     tput civis 
 
+    termux-wake-lock 2>/dev/null
+
     global_msg="${C_GREEN}🚀 กำลังเปิดจอ...${C_RESET}"
     for i in "${!pkgs[@]}"; do
         relaunch_pkg "${pkgs[$i]}" "$i"
@@ -800,10 +763,10 @@ start_auto_rejoin() {
     done
 
     while true; do
-        global_msg="${C_CYAN}👀 ระบบกำลังตรวจสอบ...${C_RESET}"
+        global_msg="${C_CYAN}👀 ระบบกำลังตรวจสอบ... (Immortal Mode)${C_RESET}"
         current_time=$(date +%s)
         
-        safe_su "ps -ef > $TEMP_PROCS 2>/dev/null \vert{}\vert{} ps -A >$TEMP_PROCS 2>/dev/null"
+        safe_su "ps -ef > $TEMP_PROCS 2>/dev/null || ps -A > $TEMP_PROCS 2>/dev/null"
 
         for i in "${!pkgs[@]}"; do
             pkg="${pkgs[$i]}"
@@ -813,7 +776,7 @@ start_auto_rejoin() {
             
             if (( wait_time > 20 )); then
                 if ! grep -q "$pkg" "$TEMP_PROCS" 2>/dev/null; then
-                    safe_su "pidof $pkg >$TEMP_PID 2>/dev/null"
+                    safe_su "pidof $pkg > $TEMP_PID 2>/dev/null"
                     local is_alive=$(cat "$TEMP_PID" 2>/dev/null | tr -d '\r\n')
                     if [[ -z "$is_alive" ]]; then
                         statuses[$i]="จอเด้งหลุด!"
@@ -827,15 +790,15 @@ start_auto_rejoin() {
 
             if [[ -z "${ping_paths[$i]}" ]]; then
                 > "$TEMP_FIND"
-                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null >>$TEMP_FIND"
-                safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_${uname}.txt' 2>/dev/null >>$TEMP_FIND"
+                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null >> $TEMP_FIND"
+                safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_${uname}.txt' 2>/dev/null >> $TEMP_FIND"
                 
                 local final_path=$(cat "$TEMP_FIND" 2>/dev/null | head -n 1 | tr -d '\r\n')
                 if [[ -n "$final_path" ]]; then ping_paths[$i]="$final_path"; fi
             fi
 
             if [[ -n "${ping_paths[$i]}" ]]; then
-                safe_su "cat '${ping_paths[$i]}' 2>/dev/null >$TEMP_PING_VAL"
+                safe_su "cat '${ping_paths[$i]}' 2>/dev/null > $TEMP_PING_VAL"
                 last_ping=$(cat "$TEMP_PING_VAL" 2>/dev/null | tr -d '\r\n ')
                 
                 if [[ "$last_ping" == "DEAD" ]]; then
@@ -851,7 +814,6 @@ start_auto_rejoin() {
                         colors[$i]="$C_GREEN"
                     else
                         diff=$((current_time -${last_ping_times[$i]:-$current_time}))
-                        # 📌 เปลี่ยนเวลารอจาก 150 วิ เป็น 60 วิ ตามที่คุณต้องการ
                         if (( diff > 60 )); then
                             statuses[$i]="จอค้าง!"
                             colors[$i]="$C_RED"
@@ -881,19 +843,10 @@ start_auto_rejoin() {
     tput cnorm 
 }
 
-# ==========================================
-# ดักจับ Ctrl+C
-# ==========================================
-trap 'reset_ui; cleanup_temp; tput cnorm; exit' INT
+trap 'reset_ui; cleanup_temp; termux-wake-unlock 2>/dev/null; tput cnorm; exit' INT
 
-# ==========================================
-# เริ่มการทำงาน 
-# ==========================================
 check_root
 
-# ==========================================
-# เมนูหลัก 
-# ==========================================
 while true; do
     reset_ui
     show_header
@@ -914,7 +867,7 @@ while true; do
         3) setup_webhook ;;
         4) setup_cookie ;;
         5) execute_cookie_login ;;
-        0) reset_ui; cleanup_temp; tput cnorm; exit 0 ;;
+        0) reset_ui; cleanup_temp; termux-wake-unlock 2>/dev/null; tput cnorm; exit 0 ;;
         *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
     esac
 done
