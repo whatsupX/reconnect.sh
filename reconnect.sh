@@ -53,7 +53,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}               v13.2 :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}           v13.3 (Anti-App Kill) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -71,6 +71,12 @@ check_root() {
         exit 1
     else
         echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว!${C_RESET}"
+        
+        # 📌 โค้ดลับสำหรับปิดระบบฆ่าแอปพื้นหลังของ Android (Phantom Process Killer)
+        echo -e "${C_YELLOW}🛡️ กำลังติดตั้งโล่ป้องกัน Termux โดนระบบปิด...${C_RESET}"
+        su -c "device_config put activity_manager max_phantom_processes 2147483647" > /dev/null 2>&1
+        su -c "settings put global settings_enable_monitor_phantom_procs false" > /dev/null 2>&1
+        
         sleep 1
     fi
 }
@@ -469,8 +475,8 @@ setup_smart_scan() {
             echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}"
             
             su -c "am force-stop $pkg" > /dev/null 2>&1
-            su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
-            su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
+            su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' -exec rm -f {} + >/dev/null 2>&1"
+            su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_*.txt' -exec rm -f {} + >/dev/null 2>&1"
             sleep 2
             
             echo -e "${C_YELLOW}   ⏳ กำลังเปิดแอปเพื่อรัน Executor (รอ 5 วิ)...${C_RESET}"
@@ -813,7 +819,7 @@ start_auto_rejoin() {
                         statuses[$i]="ออนไลน์"
                         colors[$i]="$C_GREEN"
                     else
-                        diff=$((current_time -${last_ping_times[$i]:-$current_time}))
+                        diff=$((current_time - ${last_ping_times[$i]:-$current_time}))
                         if (( diff > 60 )); then
                             statuses[$i]="จอค้าง!"
                             colors[$i]="$C_RED"
