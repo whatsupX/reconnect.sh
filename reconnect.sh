@@ -16,6 +16,8 @@ C_RESET='\033[0m'
 CONFIG_FILE="roblox_accounts.cfg"
 WEBHOOK_FILE="webhook.cfg"
 COOKIE_FILE="roblox_cookies.cfg"
+SESSION_FILE="rejoin_session.cfg"
+SETTINGS_FILE="settings.cfg"
 LUA_FILENAME="status_check.lua"
 DL_COOKIE_FILE="/storage/emulated/0/Download/cookie.txt"
 
@@ -53,7 +55,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}               v13.4 :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}               v13.5 :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -72,10 +74,8 @@ check_root() {
     else
         echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว!${C_RESET}"
         
-        echo -e "${C_YELLOW}🛡️ กำลังติดตั้งโล่ป้องกัน Termux โดนระบบปิด...${C_RESET}"
         su -c "device_config put activity_manager max_phantom_processes 2147483647" > /dev/null 2>&1
         su -c "settings put global settings_enable_monitor_phantom_procs false" > /dev/null 2>&1
-        
         sleep 1
     fi
 }
@@ -566,37 +566,54 @@ start_auto_setup_menu() {
 }
 
 # ==========================================
-# เมนู 6: เปิด/ปิด การรันสคริปต์อัตโนมัติเมื่อเข้าแอป
+# เมนู 6: เปิด/ปิด Ultimate Immortal Mode (Boot + Resume)
 # ==========================================
 manage_autorun() {
     reset_ui
     show_header
-    echo -e "${C_CYAN}--- Manage Auto-Run (Immortal Termux) ---${C_RESET}"
+    echo -e "${C_CYAN}--- Manage Ultimate Immortal Mode ---${C_RESET}"
     
     local BASHRC="$HOME/.bashrc"
+    local BOOT_DIR="$HOME/.termux/boot"
+    local BOOT_FILE="$BOOT_DIR/start_rejoin.sh"
     local SCRIPT_PATH=$(readlink -f "$0")
     
-    if grep -q "TH_REJOIN_AUTORUN" "$BASHRC" 2>/dev/null; then
-        echo -e "${C_YELLOW}สถานะปัจจุบัน: ${C_GREEN}เปิดใช้งาน (ON)${C_RESET}"
-        echo -e "สคริปต์จะถูกรันทันทีที่คุณเปิดแอป Termux"
-        echo ""
-        read -p "ต้องการ ปิดการทำงาน (Disable) หรือไม่? (y/n): " opt
-        if [[ "${opt,,}" == "y" ]]; then
-            grep -v "TH_REJOIN_AUTORUN" "$BASHRC" > "$BASHRC.tmp" && mv "$BASHRC.tmp" "$BASHRC"
-            echo -e "${C_GREEN}✅ ปิดระบบ Auto-Run เรียบร้อยแล้ว!${C_RESET}"
-        fi
-    else
-        echo -e "${C_YELLOW}สถานะปัจจุบัน: ${C_RED}ปิดใช้งาน (OFF)${C_RESET}"
-        echo -e "คุณต้องพิมพ์คำสั่งรันสคริปต์ด้วยตัวเองเมื่อเปิด Termux"
-        echo ""
-        read -p "ต้องการ เปิดการทำงาน (Enable) ให้รันสคริปต์เองอัตโนมัติหรือไม่? (y/n): " opt
-        if [[ "${opt,,}" == "y" ]]; then
-            echo "bash \"$SCRIPT_PATH\" # TH_REJOIN_AUTORUN" >> "$BASHRC"
-            echo -e "${C_GREEN}✅ เปิดระบบ Auto-Run เรียบร้อยแล้ว!${C_RESET}"
-            echo -e "${C_YELLOW}💡 ครั้งหน้าที่คุณเผลอปิดแอป หรือถูกระบบฆ่าทิ้ง พอกดเข้า Termux มาใหม่มันจะรันเองทันทีครับ${C_RESET}"
-        fi
+    local current_status="${C_RED}OFF${C_RESET}"
+    if [[ -f "$SETTINGS_FILE" ]]; then
+        source "$SETTINGS_FILE"
+        if [[ "$AUTO_RESUME" == "1" ]]; then current_status="${C_GREEN}ON${C_RESET}"; fi
     fi
-    sleep 3
+    
+    echo -e "${C_YELLOW}สถานะฟังก์ชันอมตะ: ${current_status}${C_RESET}"
+    echo -e "ระบบนี้จะเปิดใช้งาน 3 ฟีเจอร์พร้อมกัน:"
+    echo -e " 1. Auto-Boot : ดึง Termux ขึ้นมาเองทันทีที่มือถือรีสตาร์ท"
+    echo -e " 2. Auto-Run  : รันสคริปต์นี้อัตโนมัติทันทีที่เข้า Termux"
+    echo -e " 3. Auto-Resume : ข้ามเมนูหลัก แล้วเข้าฟาร์มแมพเดิมให้เองทันที"
+    echo ""
+    read -p "ต้องการ (y)เปิดใช้งาน หรือ (n)ปิดใช้งาน ? : " opt
+    
+    if [[ "${opt,,}" == "y" ]]; then
+        mkdir -p "$BOOT_DIR"
+        echo "#!/data/data/com.termux/files/usr/bin/sh" > "$BOOT_FILE"
+        echo "termux-wake-lock 2>/dev/null" >> "$BOOT_FILE"
+        echo "bash \"$SCRIPT_PATH\"" >> "$BOOT_FILE"
+        chmod +x "$BOOT_FILE"
+        
+        if ! grep -q "TH_REJOIN_AUTORUN" "$BASHRC" 2>/dev/null; then
+            echo "bash \"$SCRIPT_PATH\" # TH_REJOIN_AUTORUN" >> "$BASHRC"
+        fi
+        
+        echo "AUTO_RESUME=1" > "$SETTINGS_FILE"
+        
+        echo -e "\n${C_GREEN}✅ เปิดใช้งานระบบ Ultimate Immortal สำเร็จ!${C_RESET}"
+        echo -e "${C_YELLOW}💡 หมายเหตุ: ฟีเจอร์ Boot ต้องมีแอป Termux:Boot จาก F-Droid ในเครื่องด้วยนะครับ${C_RESET}"
+    elif [[ "${opt,,}" == "n" ]]; then
+        rm -f "$BOOT_FILE"
+        if [[ -f "$BASHRC" ]]; then grep -v "TH_REJOIN_AUTORUN" "$BASHRC" > "$BASHRC.tmp" && mv "$BASHRC.tmp" "$BASHRC"; fi
+        echo "AUTO_RESUME=0" > "$SETTINGS_FILE"
+        echo -e "\n${C_GREEN}✅ ปิดใช้งานเรียบร้อยแล้ว${C_RESET}"
+    fi
+    sleep 4
 }
 
 draw_dashboard() {
@@ -721,6 +738,9 @@ relaunch_pkg() {
     colors[$idx]="$C_YELLOW"
 }
 
+# ==========================================
+# เมนู 1: Rejoin Loop (เพิ่มระบบอ่าน/บันทึก Session)
+# ==========================================
 start_auto_rejoin() {
     reset_ui
     show_header
@@ -736,33 +756,46 @@ start_auto_rejoin() {
     reset_ui
     show_header
 
-    echo -e "${C_CYAN}--- Auto Rejoin Setup ---${C_RESET}"
-    echo -e "${C_YELLOW}กรุณาเลือกรูปแบบการเข้าเกม:${C_RESET}"
-    echo -e "  ${C_GREEN}1.${C_RESET} Public Server (เซิร์ฟรวม)"
-    echo -e "  ${C_GREEN}2.${C_RESET} VIP Server (ลิงก์เซิร์ฟส่วนตัว)"
-    echo ""
-    read -p "🎯 เลือกโหมด: " mode_choice
-
-    place_id=""
-    raw_url=""
-
-    if [[ "$mode_choice" == "1" ]]; then
-        read -p "🎯 ใส่ Place ID: " input_place
-        place_id=$(echo "$input_place" | tr -d '\r\n ')
-        if [[ -z "$place_id" ]]; then return; fi
-        
-    elif [[ "$mode_choice" == "2" ]]; then
-        read -p "🔗 วางลิงก์ VIP ทั้งหมด: " input_place
-        raw_url=$(echo "$input_place" | tr -d '\r\n ')
-        if [[ -z "$raw_url" ]]; then return; fi
-    else
-        echo -e "${C_RED}❌ เลือกโหมดไม่ถูกต้อง!${C_RESET}"
+    # 📌 ระบบดึงข้อมูลเดิม (Auto-Resume)
+    if [[ "$1" == "--resume" && -f "$SESSION_FILE" ]]; then
+        source "$SESSION_FILE"
+        echo -e "${C_GREEN}🔄 โหลดค่าเดิมสำเร็จ! กำลังดิ่งเข้าสู่การฟาร์มต่อเนื่อง...${C_RESET}"
         sleep 2
-        return
-    fi
+    else
+        echo -e "${C_CYAN}--- Auto Rejoin Setup ---${C_RESET}"
+        echo -e "${C_YELLOW}กรุณาเลือกรูปแบบการเข้าเกม:${C_RESET}"
+        echo -e "  ${C_GREEN}1.${C_RESET} Public Server (เซิร์ฟรวม)"
+        echo -e "  ${C_GREEN}2.${C_RESET} VIP Server (ลิงก์เซิร์ฟส่วนตัว)"
+        echo ""
+        read -p "🎯 เลือกโหมด: " mode_choice
 
-    read -p "⏳ หน่วงเวลาระหว่างเปิดจอ (แนะนำ 5-10): " delay_between
-    if [[ ! "$delay_between" =~ ^[0-9]+$ ]]; then delay_between=7; fi
+        place_id=""
+        raw_url=""
+
+        if [[ "$mode_choice" == "1" ]]; then
+            read -p "🎯 ใส่ Place ID: " input_place
+            place_id=$(echo "$input_place" | tr -d '\r\n ')
+            if [[ -z "$place_id" ]]; then return; fi
+            
+        elif [[ "$mode_choice" == "2" ]]; then
+            read -p "🔗 วางลิงก์ VIP ทั้งหมด: " input_place
+            raw_url=$(echo "$input_place" | tr -d '\r\n ')
+            if [[ -z "$raw_url" ]]; then return; fi
+        else
+            echo -e "${C_RED}❌ เลือกโหมดไม่ถูกต้อง!${C_RESET}"
+            sleep 2
+            return
+        fi
+
+        read -p "⏳ หน่วงเวลาระหว่างเปิดจอ (แนะนำ 5-10): " delay_between
+        if [[ ! "$delay_between" =~ ^[0-9]+$ ]]; then delay_between=7; fi
+
+        # 📌 บันทึกค่าเซสชันไว้สำหรับครั้งหน้า
+        echo "mode_choice=\"$mode_choice\"" > "$SESSION_FILE"
+        echo "place_id=\"$place_id\"" >> "$SESSION_FILE"
+        echo "raw_url=\"$raw_url\"" >> "$SESSION_FILE"
+        echo "delay_between=\"$delay_between\"" >> "$SESSION_FILE"
+    fi
 
     pkgs=()
     unames=()
@@ -886,6 +919,30 @@ trap 'reset_ui; cleanup_temp; termux-wake-unlock 2>/dev/null; tput cnorm; exit' 
 
 check_root
 
+# ==========================================
+# 📌 ระบบดักจับการรัน Auto-Resume 
+# ==========================================
+if [[ -f "$SETTINGS_FILE" ]]; then
+    source "$SETTINGS_FILE"
+    if [[ "$AUTO_RESUME" == "1" && -f "$SESSION_FILE" ]]; then
+        clear
+        show_header
+        echo -e "${C_YELLOW}🚀 ตรวจพบ Ultimate Immortal Mode! กำลังเข้าสู่การฟาร์มต่อเนื่อง...${C_RESET}"
+        echo -e "${C_CYAN}ระบบจะรีจอยเข้าแมพเดิมอัตโนมัติภายใน 5 วินาที${C_RESET}"
+        echo -e "พิมพ์ ${C_RED}'menu'${C_RESET} แล้วกด Enter เพื่อยกเลิกและกลับไปหน้าหลัก"
+        
+        read -t 5 -p "> " bypass
+        if [[ "${bypass,,}" != "menu" ]]; then
+            start_auto_rejoin "--resume"
+            # ถ้ายกเลิกรีจอยให้จบการทำงานไปเลย ไม่เด้งกลับมาเมนู
+            reset_ui; cleanup_temp; termux-wake-unlock 2>/dev/null; tput cnorm; exit 0
+        fi
+    fi
+fi
+
+# ==========================================
+# เมนูหลัก 
+# ==========================================
 while true; do
     reset_ui
     show_header
