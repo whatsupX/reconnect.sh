@@ -53,7 +53,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}           v13.3 (Anti-App Kill) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}               v13.4 :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -72,7 +72,6 @@ check_root() {
     else
         echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว!${C_RESET}"
         
-        # 📌 โค้ดลับสำหรับปิดระบบฆ่าแอปพื้นหลังของ Android (Phantom Process Killer)
         echo -e "${C_YELLOW}🛡️ กำลังติดตั้งโล่ป้องกัน Termux โดนระบบปิด...${C_RESET}"
         su -c "device_config put activity_manager max_phantom_processes 2147483647" > /dev/null 2>&1
         su -c "settings put global settings_enable_monitor_phantom_procs false" > /dev/null 2>&1
@@ -475,8 +474,8 @@ setup_smart_scan() {
             echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}"
             
             su -c "am force-stop $pkg" > /dev/null 2>&1
-            su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' -exec rm -f {} + >/dev/null 2>&1"
-            su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_*.txt' -exec rm -f {} + >/dev/null 2>&1"
+            su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
+            su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
             sleep 2
             
             echo -e "${C_YELLOW}   ⏳ กำลังเปิดแอปเพื่อรัน Executor (รอ 5 วิ)...${C_RESET}"
@@ -566,6 +565,40 @@ start_auto_setup_menu() {
     done
 }
 
+# ==========================================
+# เมนู 6: เปิด/ปิด การรันสคริปต์อัตโนมัติเมื่อเข้าแอป
+# ==========================================
+manage_autorun() {
+    reset_ui
+    show_header
+    echo -e "${C_CYAN}--- Manage Auto-Run (Immortal Termux) ---${C_RESET}"
+    
+    local BASHRC="$HOME/.bashrc"
+    local SCRIPT_PATH=$(readlink -f "$0")
+    
+    if grep -q "TH_REJOIN_AUTORUN" "$BASHRC" 2>/dev/null; then
+        echo -e "${C_YELLOW}สถานะปัจจุบัน: ${C_GREEN}เปิดใช้งาน (ON)${C_RESET}"
+        echo -e "สคริปต์จะถูกรันทันทีที่คุณเปิดแอป Termux"
+        echo ""
+        read -p "ต้องการ ปิดการทำงาน (Disable) หรือไม่? (y/n): " opt
+        if [[ "${opt,,}" == "y" ]]; then
+            grep -v "TH_REJOIN_AUTORUN" "$BASHRC" > "$BASHRC.tmp" && mv "$BASHRC.tmp" "$BASHRC"
+            echo -e "${C_GREEN}✅ ปิดระบบ Auto-Run เรียบร้อยแล้ว!${C_RESET}"
+        fi
+    else
+        echo -e "${C_YELLOW}สถานะปัจจุบัน: ${C_RED}ปิดใช้งาน (OFF)${C_RESET}"
+        echo -e "คุณต้องพิมพ์คำสั่งรันสคริปต์ด้วยตัวเองเมื่อเปิด Termux"
+        echo ""
+        read -p "ต้องการ เปิดการทำงาน (Enable) ให้รันสคริปต์เองอัตโนมัติหรือไม่? (y/n): " opt
+        if [[ "${opt,,}" == "y" ]]; then
+            echo "bash \"$SCRIPT_PATH\" # TH_REJOIN_AUTORUN" >> "$BASHRC"
+            echo -e "${C_GREEN}✅ เปิดระบบ Auto-Run เรียบร้อยแล้ว!${C_RESET}"
+            echo -e "${C_YELLOW}💡 ครั้งหน้าที่คุณเผลอปิดแอป หรือถูกระบบฆ่าทิ้ง พอกดเข้า Termux มาใหม่มันจะรันเองทันทีครับ${C_RESET}"
+        fi
+    fi
+    sleep 3
+}
+
 draw_dashboard() {
     reset_ui
     show_header
@@ -581,7 +614,7 @@ draw_dashboard() {
         local acc="${unames[$j]}"
         local stat="${statuses[$j]}"
         local col="${colors[$j]}"
-        printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} ${col}%-20s${C_RESET} ${C_CYAN}│${C_RESET}\n" "$pkg" "$acc" "$stat"
+        printf "${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET}${col}%-20s${C_RESET}${C_CYAN}│${C_RESET}\n" "$pkg" "$acc" "$stat"
     done
     
     echo -e "${C_CYAN}└──────────────────┴──────────────────┴──────────────────────┘${C_RESET}"
@@ -772,7 +805,7 @@ start_auto_rejoin() {
         global_msg="${C_CYAN}👀 ระบบกำลังตรวจสอบ... (Immortal Mode)${C_RESET}"
         current_time=$(date +%s)
         
-        safe_su "ps -ef > $TEMP_PROCS 2>/dev/null || ps -A > $TEMP_PROCS 2>/dev/null"
+        safe_su "ps -ef > $TEMP_PROCS 2>/dev/null \vert{}\vert{} ps -A >$TEMP_PROCS 2>/dev/null"
 
         for i in "${!pkgs[@]}"; do
             pkg="${pkgs[$i]}"
@@ -782,7 +815,7 @@ start_auto_rejoin() {
             
             if (( wait_time > 20 )); then
                 if ! grep -q "$pkg" "$TEMP_PROCS" 2>/dev/null; then
-                    safe_su "pidof $pkg > $TEMP_PID 2>/dev/null"
+                    safe_su "pidof $pkg >$TEMP_PID 2>/dev/null"
                     local is_alive=$(cat "$TEMP_PID" 2>/dev/null | tr -d '\r\n')
                     if [[ -z "$is_alive" ]]; then
                         statuses[$i]="จอเด้งหลุด!"
@@ -796,15 +829,15 @@ start_auto_rejoin() {
 
             if [[ -z "${ping_paths[$i]}" ]]; then
                 > "$TEMP_FIND"
-                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null >> $TEMP_FIND"
-                safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_${uname}.txt' 2>/dev/null >> $TEMP_FIND"
+                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null >>$TEMP_FIND"
+                safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_${uname}.txt' 2>/dev/null >>$TEMP_FIND"
                 
                 local final_path=$(cat "$TEMP_FIND" 2>/dev/null | head -n 1 | tr -d '\r\n')
                 if [[ -n "$final_path" ]]; then ping_paths[$i]="$final_path"; fi
             fi
 
             if [[ -n "${ping_paths[$i]}" ]]; then
-                safe_su "cat '${ping_paths[$i]}' 2>/dev/null > $TEMP_PING_VAL"
+                safe_su "cat '${ping_paths[$i]}' 2>/dev/null >$TEMP_PING_VAL"
                 last_ping=$(cat "$TEMP_PING_VAL" 2>/dev/null | tr -d '\r\n ')
                 
                 if [[ "$last_ping" == "DEAD" ]]; then
@@ -819,7 +852,7 @@ start_auto_rejoin() {
                         statuses[$i]="ออนไลน์"
                         colors[$i]="$C_GREEN"
                     else
-                        diff=$((current_time - ${last_ping_times[$i]:-$current_time}))
+                        diff=$((current_time -${last_ping_times[$i]:-$current_time}))
                         if (( diff > 60 )); then
                             statuses[$i]="จอค้าง!"
                             colors[$i]="$C_RED"
@@ -862,6 +895,7 @@ while true; do
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}3${C_RESET}  Manage Webhook      ${C_YELLOW}Discord Autoexec${C_RESET}               ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}4${C_RESET}  Setup Cookie Login  ${C_YELLOW}Import & Auto Bind${C_RESET}             ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}5${C_RESET}  Run Cookie Login    ${C_YELLOW}Login to Home Screen${C_RESET}           ${C_CYAN}│${C_RESET}"
+    echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}6${C_RESET}  Manage Auto-Run     ${C_YELLOW}Immortal Termux${C_RESET}                ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}                                                        ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}│${C_RESET}  ${C_GREEN}0${C_RESET}  Exit                ${C_YELLOW}Close Tool${C_RESET}                     ${C_CYAN}│${C_RESET}"
     echo -e "${C_CYAN}└────────────────────────────────────────────────────────┘${C_RESET}"
@@ -873,6 +907,7 @@ while true; do
         3) setup_webhook ;;
         4) setup_cookie ;;
         5) execute_cookie_login ;;
+        6) manage_autorun ;;
         0) reset_ui; cleanup_temp; termux-wake-unlock 2>/dev/null; tput cnorm; exit 0 ;;
         *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
     esac
