@@ -55,10 +55,11 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}        v13.6 (Quick Exit & Force Auto-Boot) :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}              v13.7 (Instant Exit Fix) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
+# ป้องกัน Root แย่งกินคีย์บอร์ด
 safe_su() {
     su -c "$1" < /dev/null > /dev/null 2>&1
 }
@@ -74,8 +75,8 @@ check_root() {
     else
         echo -e "${C_GREEN}✅ ตรวจพบสิทธิ์ Root เรียบร้อยแล้ว!${C_RESET}"
         
-        su -c "device_config put activity_manager max_phantom_processes 2147483647" > /dev/null 2>&1
-        su -c "settings put global settings_enable_monitor_phantom_procs false" > /dev/null 2>&1
+        su -c "device_config put activity_manager max_phantom_processes 2147483647" < /dev/null > /dev/null 2>&1
+        su -c "settings put global settings_enable_monitor_phantom_procs false" < /dev/null > /dev/null 2>&1
         sleep 1
     fi
 }
@@ -89,10 +90,10 @@ inject_lua_script() {
     fi
 
     > "$TEMP_FOLDERS"
-    su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexec' 2>/dev/null >> '$TEMP_FOLDERS'"
-    su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'"
-    su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type d -iname 'autoexec' 2>/dev/null >> '$TEMP_FOLDERS'"
-    su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'"
+    su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexec' 2>/dev/null >> '$TEMP_FOLDERS'" < /dev/null
+    su -c "find /storage/emulated/0 -maxdepth 4 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'" < /dev/null
+    su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type d -iname 'autoexec' 2>/dev/null >> '$TEMP_FOLDERS'" < /dev/null
+    su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type d -iname 'autoexecute' 2>/dev/null >> '$TEMP_FOLDERS'" < /dev/null
 
     if [[ ! -s "$TEMP_FOLDERS" ]]; then
         echo -e "${C_YELLOW}⚠️ ไม่พบโฟลเดอร์ Autoexec/Autoexecute (ระบบอาจสร้างขึ้นหลังจากเปิดเกมรอบแรก)${C_RESET}"
@@ -148,8 +149,8 @@ EOF
     while read -r folder; do
         if [[ -n "$folder" ]]; then
             local target_path="$folder/$LUA_FILENAME"
-            su -c "cp '$TEMP_LUA' '$target_path' 2>/dev/null"
-            su -c "chmod 777 '$target_path' 2>/dev/null"
+            su -c "cp '$TEMP_LUA' '$target_path' 2>/dev/null" < /dev/null
+            su -c "chmod 777 '$target_path' 2>/dev/null" < /dev/null
             echo -e "${C_GREEN}✔️ ฝังสคริปต์อัปเดตลงใน: $folder${C_RESET}"
         fi
     done < "$TEMP_FOLDERS"
@@ -473,17 +474,17 @@ setup_smart_scan() {
             show_header
             echo -e "${C_CYAN}📱 กำลังดำเนินการจอ: ${pkg}...${C_RESET}"
             
-            su -c "am force-stop $pkg" > /dev/null 2>&1
-            su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
-            su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_*.txt' -delete 2>/dev/null"
+            su -c "am force-stop $pkg" < /dev/null > /dev/null 2>&1
+            su -c "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_*.txt' -delete 2>/dev/null" < /dev/null
+            su -c "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_*.txt' -delete 2>/dev/null" < /dev/null
             sleep 2
             
             echo -e "${C_YELLOW}   ⏳ กำลังเปิดแอปเพื่อรัน Executor (รอ 5 วิ)...${C_RESET}"
-            su -c "monkey -p \"$pkg\" -c android.intent.category.LAUNCHER 1" > /dev/null 2>&1
+            su -c "monkey -p \"$pkg\" -c android.intent.category.LAUNCHER 1" < /dev/null > /dev/null 2>&1
             sleep 5
             
             echo -e "${C_YELLOW}   ⏳ กำลังส่งเข้าแมพและรอสคริปต์สร้างไฟล์ชีพจร (รอสูงสุด 90 วิ)...${C_RESET}"
-            su -c "am start -a android.intent.action.VIEW -d 'roblox://placeId=$random_place' -p '$pkg'" > /dev/null 2>&1
+            su -c "am start -a android.intent.action.VIEW -d 'roblox://placeId=$random_place' -p '$pkg'" < /dev/null > /dev/null 2>&1
             
             local uname=""
             local timeout=90
@@ -511,8 +512,8 @@ setup_smart_scan() {
                 ((elapsed+=3))
             done
             
-            su -c "am force-stop $pkg" > /dev/null 2>&1
-            su -c "am start -n com.termux/com.termux.app.TermuxActivity" > /dev/null 2>&1
+            su -c "am force-stop $pkg" < /dev/null > /dev/null 2>&1
+            su -c "am start -n com.termux/com.termux.app.TermuxActivity" < /dev/null > /dev/null 2>&1
             sleep 1
             
             reset_ui
@@ -565,9 +566,6 @@ start_auto_setup_menu() {
     done
 }
 
-# ==========================================
-# เมนู 6: เปิด/ปิด Ultimate Immortal Mode (Boot + Resume)
-# ==========================================
 manage_autorun() {
     reset_ui
     show_header
@@ -596,7 +594,6 @@ manage_autorun() {
         mkdir -p "$BOOT_DIR"
         echo "#!/data/data/com.termux/files/usr/bin/sh" > "$BOOT_FILE"
         echo "termux-wake-lock 2>/dev/null" >> "$BOOT_FILE"
-        # 📌 ฝังคำสั่งกระชากแอปขึ้นมาทำงานบนหน้าจอทันทีหลัง Boot
         echo "am start -n com.termux/com.termux.app.TermuxActivity 2>/dev/null" >> "$BOOT_FILE"
         echo "bash \"$SCRIPT_PATH\"" >> "$BOOT_FILE"
         chmod +x "$BOOT_FILE"
@@ -618,9 +615,6 @@ manage_autorun() {
     sleep 4
 }
 
-# ==========================================
-# ระบบวาดตาราง Dashboard (เพิ่มปุ่มลัดออก q)
-# ==========================================
 draw_dashboard() {
     reset_ui
     show_header
@@ -640,9 +634,7 @@ draw_dashboard() {
     done
     
     echo -e "${C_CYAN}└──────────────────┴──────────────────┴──────────────────────┘${C_RESET}"
-    # 📌 แจ้งเตือนปุ่มกดลัดใหม่
-    echo -e "${C_YELLOW}[กดปุ่ม 'q' บนคีย์บอร์ดเพื่อหยุด และกลับไปเมนูหลัก]${C_RESET}"
-    echo -e "${C_RED}[กด 'Ctrl+C' เพื่อปิดโปรแกรมทิ้งไปเลย]${C_RESET}"
+    echo -e "${C_YELLOW}[กดปุ่ม 'q' หรือ 'Ctrl+C' เพื่อหยุดและกลับไปเมนูหลัก]${C_RESET}"
 }
 
 relaunch_pkg() {
@@ -674,7 +666,7 @@ relaunch_pkg() {
     colors[$idx]="$C_RED"
     draw_dashboard
     
-    su -c "am force-stop $p" > /dev/null 2>&1
+    su -c "am force-stop $p" < /dev/null > /dev/null 2>&1
     sleep 2
 
     statuses[$idx]="เปิดหน้าแรก"
@@ -756,7 +748,6 @@ start_auto_rejoin() {
     fi
 
     inject_lua_script
-
     reset_ui
     show_header
 
@@ -779,7 +770,6 @@ start_auto_rejoin() {
             read -p "🎯 ใส่ Place ID: " input_place
             place_id=$(echo "$input_place" | tr -d '\r\n ')
             if [[ -z "$place_id" ]]; then return; fi
-            
         elif [[ "$mode_choice" == "2" ]]; then
             read -p "🔗 วางลิงก์ VIP ทั้งหมด: " input_place
             raw_url=$(echo "$input_place" | tr -d '\r\n ')
@@ -827,22 +817,34 @@ start_auto_rejoin() {
     last_ping_times=()
 
     tput civis 
-
     termux-wake-lock 2>/dev/null
+
+    # 📌 สร้างตัวแปรดักจับการหยุด (Trap Interrupt)
+    BREAK_LOOP=0
+    trap 'BREAK_LOOP=1' INT
 
     global_msg="${C_GREEN}🚀 กำลังเปิดจอ...${C_RESET}"
     for i in "${!pkgs[@]}"; do
+        if [[ "$BREAK_LOOP" == "1" ]]; then break; fi
         relaunch_pkg "${pkgs[$i]}" "$i"
         sleep "$delay_between"
     done
 
     while true; do
+        if [[ "$BREAK_LOOP" == "1" ]]; then
+            echo -e "\n${C_YELLOW}🛑 กำลังยกเลิกและกลับสู่เมนูหลัก...${C_RESET}"
+            sleep 1
+            break
+        fi
+
         global_msg="${C_CYAN}👀 ระบบกำลังตรวจสอบ... (Immortal Mode)${C_RESET}"
         current_time=$(date +%s)
         
         safe_su "ps -ef > $TEMP_PROCS 2>/dev/null || ps -A > $TEMP_PROCS 2>/dev/null"
 
         for i in "${!pkgs[@]}"; do
+            if [[ "$BREAK_LOOP" == "1" ]]; then break; fi
+
             pkg="${pkgs[$i]}"
             uname="${unames[$i]}"
             launched_at=${launch_times[$i]:-0}
@@ -887,7 +889,7 @@ start_auto_rejoin() {
                         statuses[$i]="ออนไลน์"
                         colors[$i]="$C_GREEN"
                     else
-                        diff=$((current_time -${last_ping_times[$i]:-$current_time}))
+                        diff=$((current_time - ${last_ping_times[$i]:-$current_time}))
                         if (( diff > 60 )); then
                             statuses[$i]="จอค้าง!"
                             colors[$i]="$C_RED"
@@ -914,19 +916,27 @@ start_auto_rejoin() {
         
         draw_dashboard
         
-        # 📌 ใช้ read ดักฟังคีย์บอร์ดแทน sleep 5 (รอสูงสุด 5 วินาทีต่อรอบ)
-        read -t 5 -n 1 -s key
-        if [[ "${key,,}" == "q" ]]; then
-            echo -e "\n${C_YELLOW}กำลังยกเลิกและกลับเมนูหลัก...${C_RESET}"
-            sleep 1
-            break
-        fi
+        # 📌 ระบบอ่านคีย์บอร์ดแบบทะลวงเกราะฮาร์ดแวร์โดยตรง (Direct TTY)
+        for (( w=0; w<5; w++ )); do
+            if [[ "$BREAK_LOOP" == "1" ]]; then break 2; fi
+            read -t 1 -n 1 -s key < /dev/tty 2>/dev/null
+            if [[ "${key,,}" == "q" ]]; then
+                echo -e "\n${C_YELLOW}🛑 กำลังยกเลิกและกลับสู่เมนูหลัก...${C_RESET}"
+                BREAK_LOOP=1
+                sleep 1
+                break 2
+            fi
+        done
 
     done
+    
+    # 📌 คืนค่าระบบดักจับการปิดแอป
+    trap 'reset_ui; cleanup_temp; termux-wake-unlock 2>/dev/null; tput cnorm; exit 0' INT
     tput cnorm 
 }
 
-trap 'reset_ui; cleanup_temp; termux-wake-unlock 2>/dev/null; tput cnorm; exit' INT
+# กำหนด Trap พื้นฐานสำหรับเมนูหลัก
+trap 'reset_ui; cleanup_temp; termux-wake-unlock 2>/dev/null; tput cnorm; exit 0' INT
 
 check_root
 
@@ -937,12 +947,20 @@ if [[ -f "$SETTINGS_FILE" ]]; then
         show_header
         echo -e "${C_YELLOW}🚀 ตรวจพบ Ultimate Immortal Mode! กำลังเข้าสู่การฟาร์มต่อเนื่อง...${C_RESET}"
         echo -e "${C_CYAN}ระบบจะรีจอยเข้าแมพเดิมอัตโนมัติภายใน 5 วินาที${C_RESET}"
-        echo -e "พิมพ์ ${C_RED}'menu'${C_RESET} แล้วกด Enter เพื่อยกเลิกและกลับไปหน้าหลัก"
+        echo -e "พิมพ์ ${C_RED}'q'${C_RESET} หรือกด ${C_RED}Ctrl+C${C_RESET} เพื่อยกเลิกและกลับไปหน้าเมนูหลัก"
         
-        read -t 5 -p "> " bypass
-        if [[ "${bypass,,}" != "menu" ]]; then
+        # ดักรอกดยกเลิก
+        bypass_flag=0
+        for (( w=0; w<5; w++ )); do
+            read -t 1 -n 1 -s key < /dev/tty 2>/dev/null
+            if [[ "${key,,}" == "q" ]]; then
+                bypass_flag=1
+                break
+            fi
+        done
+        
+        if [[ "$bypass_flag" == "0" ]]; then
             start_auto_rejoin "--resume"
-            # 📌 ถ้ายกเลิกด้วยปุ่ม 'q' มันจะกลับมาบรรทัดนี้ แล้วหลุดไปเข้าเมนูหลักต่อ
         fi
     fi
 fi
