@@ -55,7 +55,7 @@ show_header() {
     echo -e "${C_CYAN}██║███╗██║██╔══██║██╔══██║   ██║   ╚════██║██║   ██║██╔═══╝  ██╔██╗ ${C_RESET}"
     echo -e "${C_CYAN}╚███╔███╔╝██║  ██║██║  ██║   ██║   ███████║╚██████╔╝██║     ██╔╝ ██╗${C_RESET}"
     echo -e "${C_CYAN} ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝${C_RESET}"
-    echo -e "${C_YELLOW}               v13.5 :: Made by whatsupX${C_RESET}"
+    echo -e "${C_YELLOW}        v13.6 (Quick Exit & Force Auto-Boot) :: Made by whatsupX${C_RESET}"
     echo ""
 }
 
@@ -586,7 +586,7 @@ manage_autorun() {
     
     echo -e "${C_YELLOW}สถานะฟังก์ชันอมตะ: ${current_status}${C_RESET}"
     echo -e "ระบบนี้จะเปิดใช้งาน 3 ฟีเจอร์พร้อมกัน:"
-    echo -e " 1. Auto-Boot : ดึง Termux ขึ้นมาเองทันทีที่มือถือรีสตาร์ท"
+    echo -e " 1. Auto-Boot : ดึง Termux ขึ้นมาบนหน้าจอทันทีที่มือถือรีสตาร์ทเสร็จ"
     echo -e " 2. Auto-Run  : รันสคริปต์นี้อัตโนมัติทันทีที่เข้า Termux"
     echo -e " 3. Auto-Resume : ข้ามเมนูหลัก แล้วเข้าฟาร์มแมพเดิมให้เองทันที"
     echo ""
@@ -596,6 +596,8 @@ manage_autorun() {
         mkdir -p "$BOOT_DIR"
         echo "#!/data/data/com.termux/files/usr/bin/sh" > "$BOOT_FILE"
         echo "termux-wake-lock 2>/dev/null" >> "$BOOT_FILE"
+        # 📌 ฝังคำสั่งกระชากแอปขึ้นมาทำงานบนหน้าจอทันทีหลัง Boot
+        echo "am start -n com.termux/com.termux.app.TermuxActivity 2>/dev/null" >> "$BOOT_FILE"
         echo "bash \"$SCRIPT_PATH\"" >> "$BOOT_FILE"
         chmod +x "$BOOT_FILE"
         
@@ -606,7 +608,7 @@ manage_autorun() {
         echo "AUTO_RESUME=1" > "$SETTINGS_FILE"
         
         echo -e "\n${C_GREEN}✅ เปิดใช้งานระบบ Ultimate Immortal สำเร็จ!${C_RESET}"
-        echo -e "${C_YELLOW}💡 หมายเหตุ: ฟีเจอร์ Boot ต้องมีแอป Termux:Boot จาก F-Droid ในเครื่องด้วยนะครับ${C_RESET}"
+        echo -e "${C_YELLOW}💡 หมายเหตุ: กรุณาโหลดแอป Termux:Boot (จาก F-Droid) และกดเข้าแอป 1 ครั้ง เพื่อให้ระบบทำงานนะครับ${C_RESET}"
     elif [[ "${opt,,}" == "n" ]]; then
         rm -f "$BOOT_FILE"
         if [[ -f "$BASHRC" ]]; then grep -v "TH_REJOIN_AUTORUN" "$BASHRC" > "$BASHRC.tmp" && mv "$BASHRC.tmp" "$BASHRC"; fi
@@ -616,6 +618,9 @@ manage_autorun() {
     sleep 4
 }
 
+# ==========================================
+# ระบบวาดตาราง Dashboard (เพิ่มปุ่มลัดออก q)
+# ==========================================
 draw_dashboard() {
     reset_ui
     show_header
@@ -631,11 +636,13 @@ draw_dashboard() {
         local acc="${unames[$j]}"
         local stat="${statuses[$j]}"
         local col="${colors[$j]}"
-        printf "${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET} \%-16s${C_CYAN}│${C_RESET}${col}%-20s${C_RESET}${C_CYAN}│${C_RESET}\n" "$pkg" "$acc" "$stat"
+        printf "${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} %-16s ${C_CYAN}│${C_RESET} ${col}%-20s${C_RESET} ${C_CYAN}│${C_RESET}\n" "$pkg" "$acc" "$stat"
     done
     
     echo -e "${C_CYAN}└──────────────────┴──────────────────┴──────────────────────┘${C_RESET}"
-    echo -e "${C_RED}< กด Ctrl+C เพื่อหยุดการทำงาน >${C_RESET}"
+    # 📌 แจ้งเตือนปุ่มกดลัดใหม่
+    echo -e "${C_YELLOW}[กดปุ่ม 'q' บนคีย์บอร์ดเพื่อหยุด และกลับไปเมนูหลัก]${C_RESET}"
+    echo -e "${C_RED}[กด 'Ctrl+C' เพื่อปิดโปรแกรมทิ้งไปเลย]${C_RESET}"
 }
 
 relaunch_pkg() {
@@ -738,9 +745,6 @@ relaunch_pkg() {
     colors[$idx]="$C_YELLOW"
 }
 
-# ==========================================
-# เมนู 1: Rejoin Loop (เพิ่มระบบอ่าน/บันทึก Session)
-# ==========================================
 start_auto_rejoin() {
     reset_ui
     show_header
@@ -756,7 +760,6 @@ start_auto_rejoin() {
     reset_ui
     show_header
 
-    # 📌 ระบบดึงข้อมูลเดิม (Auto-Resume)
     if [[ "$1" == "--resume" && -f "$SESSION_FILE" ]]; then
         source "$SESSION_FILE"
         echo -e "${C_GREEN}🔄 โหลดค่าเดิมสำเร็จ! กำลังดิ่งเข้าสู่การฟาร์มต่อเนื่อง...${C_RESET}"
@@ -790,7 +793,6 @@ start_auto_rejoin() {
         read -p "⏳ หน่วงเวลาระหว่างเปิดจอ (แนะนำ 5-10): " delay_between
         if [[ ! "$delay_between" =~ ^[0-9]+$ ]]; then delay_between=7; fi
 
-        # 📌 บันทึกค่าเซสชันไว้สำหรับครั้งหน้า
         echo "mode_choice=\"$mode_choice\"" > "$SESSION_FILE"
         echo "place_id=\"$place_id\"" >> "$SESSION_FILE"
         echo "raw_url=\"$raw_url\"" >> "$SESSION_FILE"
@@ -838,7 +840,7 @@ start_auto_rejoin() {
         global_msg="${C_CYAN}👀 ระบบกำลังตรวจสอบ... (Immortal Mode)${C_RESET}"
         current_time=$(date +%s)
         
-        safe_su "ps -ef > $TEMP_PROCS 2>/dev/null \vert{}\vert{} ps -A >$TEMP_PROCS 2>/dev/null"
+        safe_su "ps -ef > $TEMP_PROCS 2>/dev/null || ps -A > $TEMP_PROCS 2>/dev/null"
 
         for i in "${!pkgs[@]}"; do
             pkg="${pkgs[$i]}"
@@ -848,7 +850,7 @@ start_auto_rejoin() {
             
             if (( wait_time > 20 )); then
                 if ! grep -q "$pkg" "$TEMP_PROCS" 2>/dev/null; then
-                    safe_su "pidof $pkg >$TEMP_PID 2>/dev/null"
+                    safe_su "pidof $pkg > $TEMP_PID 2>/dev/null"
                     local is_alive=$(cat "$TEMP_PID" 2>/dev/null | tr -d '\r\n')
                     if [[ -z "$is_alive" ]]; then
                         statuses[$i]="จอเด้งหลุด!"
@@ -862,15 +864,15 @@ start_auto_rejoin() {
 
             if [[ -z "${ping_paths[$i]}" ]]; then
                 > "$TEMP_FIND"
-                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null >>$TEMP_FIND"
-                safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_${uname}.txt' 2>/dev/null >>$TEMP_FIND"
+                safe_su "find /storage/emulated/0 -maxdepth 4 -type f -iname 'ping_${uname}.txt' 2>/dev/null >> $TEMP_FIND"
+                safe_su "find /storage/emulated/0/Android/data -maxdepth 6 -type f -iname 'ping_${uname}.txt' 2>/dev/null >> $TEMP_FIND"
                 
                 local final_path=$(cat "$TEMP_FIND" 2>/dev/null | head -n 1 | tr -d '\r\n')
                 if [[ -n "$final_path" ]]; then ping_paths[$i]="$final_path"; fi
             fi
 
             if [[ -n "${ping_paths[$i]}" ]]; then
-                safe_su "cat '${ping_paths[$i]}' 2>/dev/null >$TEMP_PING_VAL"
+                safe_su "cat '${ping_paths[$i]}' 2>/dev/null > $TEMP_PING_VAL"
                 last_ping=$(cat "$TEMP_PING_VAL" 2>/dev/null | tr -d '\r\n ')
                 
                 if [[ "$last_ping" == "DEAD" ]]; then
@@ -909,8 +911,17 @@ start_auto_rejoin() {
                 fi
             fi
         done
+        
         draw_dashboard
-        sleep 5
+        
+        # 📌 ใช้ read ดักฟังคีย์บอร์ดแทน sleep 5 (รอสูงสุด 5 วินาทีต่อรอบ)
+        read -t 5 -n 1 -s key
+        if [[ "${key,,}" == "q" ]]; then
+            echo -e "\n${C_YELLOW}กำลังยกเลิกและกลับเมนูหลัก...${C_RESET}"
+            sleep 1
+            break
+        fi
+
     done
     tput cnorm 
 }
@@ -919,9 +930,6 @@ trap 'reset_ui; cleanup_temp; termux-wake-unlock 2>/dev/null; tput cnorm; exit' 
 
 check_root
 
-# ==========================================
-# 📌 ระบบดักจับการรัน Auto-Resume 
-# ==========================================
 if [[ -f "$SETTINGS_FILE" ]]; then
     source "$SETTINGS_FILE"
     if [[ "$AUTO_RESUME" == "1" && -f "$SESSION_FILE" ]]; then
@@ -934,8 +942,7 @@ if [[ -f "$SETTINGS_FILE" ]]; then
         read -t 5 -p "> " bypass
         if [[ "${bypass,,}" != "menu" ]]; then
             start_auto_rejoin "--resume"
-            # ถ้ายกเลิกรีจอยให้จบการทำงานไปเลย ไม่เด้งกลับมาเมนู
-            reset_ui; cleanup_temp; termux-wake-unlock 2>/dev/null; tput cnorm; exit 0
+            # 📌 ถ้ายกเลิกด้วยปุ่ม 'q' มันจะกลับมาบรรทัดนี้ แล้วหลุดไปเข้าเมนูหลักต่อ
         fi
     fi
 fi
